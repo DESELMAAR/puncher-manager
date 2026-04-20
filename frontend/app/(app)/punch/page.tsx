@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import type { PunchDto, PunchType } from "@/lib/types";
-import { labelPunch, nextExpectedPunch, PUNCH_ORDER } from "@/lib/punchSequence";
+import { labelPunch, nextExpectedPunch } from "@/lib/punchSequence";
 import { ActiveStatusTimer } from "@/components/punch/ActiveStatusTimer";
 import { formatDurationMs } from "@/lib/time";
 
@@ -48,6 +48,15 @@ export default function PunchPage() {
     }
   }
 
+  function resolveWorkPunchType(): PunchType {
+    if (next === "WORK_START") return "WORK_START";
+    if (next === "BREAK1_END") return "BREAK1_END";
+    if (next === "LUNCH_END") return "LUNCH_END";
+    if (next === "BREAK2_END") return "BREAK2_END";
+    // Allow switching to work at any time
+    return "WORK_START";
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Punch</h1>
@@ -57,8 +66,20 @@ export default function PunchPage() {
       <ActiveStatusTimer punches={punches} />
       {msg && <p className="rounded bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/40">{msg}</p>}
       <div className="grid gap-3 sm:grid-cols-2">
-        {PUNCH_ORDER.map((t) => {
-          const active = t === "WORK_START" || next === t;
+        <button
+          type="button"
+          disabled={loading}
+          onClick={() => punch(resolveWorkPunchType())}
+          className="rounded-xl border border-emerald-500 bg-emerald-50 px-4 py-4 text-left text-sm font-medium text-emerald-900 transition hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-100 dark:hover:bg-emerald-950/60"
+        >
+          Work
+          <div className="mt-1 text-xs font-normal text-emerald-700/90 dark:text-emerald-200/90">
+            Starts work or ends break/lunch
+          </div>
+        </button>
+
+        {(["BREAK1_START", "LUNCH_START", "BREAK2_START", "LOGOUT"] as PunchType[]).map((t) => {
+          const active = next === t;
           return (
             <button
               key={t}

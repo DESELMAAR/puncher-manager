@@ -58,13 +58,13 @@ export function resolveActiveStatus(todayPunches: PunchDto[]): ActiveStatus {
 
 export function labelPunch(t: PunchType): string {
   const map: Record<PunchType, string> = {
-    WORK_START: "Start work",
+    WORK_START: "Work",
     BREAK1_START: "Break 1 start",
-    BREAK1_END: "Break 1 end",
+    BREAK1_END: "Work",
     LUNCH_START: "Lunch start",
-    LUNCH_END: "Lunch end",
+    LUNCH_END: "Work",
     BREAK2_START: "Break 2 start",
-    BREAK2_END: "Break 2 end",
+    BREAK2_END: "Work",
     LOGOUT: "End shift",
   };
   return map[t];

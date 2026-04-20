@@ -86,6 +86,12 @@ export default function TeamsAdminPage() {
     );
   }, [users, effectiveDeptId]);
 
+  const userNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const u of users) m.set(u.id, u.name);
+    return m;
+  }, [users]);
+
   useEffect(() => {
     if (!modalOpen) return;
     if (editing) {
@@ -235,7 +241,7 @@ export default function TeamsAdminPage() {
                 >
                   <td className="px-4 py-3 font-medium">{t.name}</td>
                   <td className="px-4 py-3 font-mono text-xs text-zinc-500">
-                    {t.teamLeaderId ? t.teamLeaderId.slice(0, 8) + "…" : "—"}
+                    {t.teamLeaderId ? userNameById.get(t.teamLeaderId) || "—" : "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button

@@ -54,6 +54,7 @@ export default function OrganizationAdminPage() {
   const [rows, setRows] = useState<UserDto[]>([]);
   const [departments, setDepartments] = useState<DepartmentDto[]>([]);
   const [teamsForDept, setTeamsForDept] = useState<TeamDto[]>([]);
+  const [allTeams, setAllTeams] = useState<TeamDto[]>([]);
   const [teamsLoading, setTeamsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -97,6 +98,25 @@ export default function OrganizationAdminPage() {
   }, []);
 
   useEffect(() => {
+    if (departments.length === 0) {
+      setAllTeams([]);
+      return;
+    }
+    void (async () => {
+      try {
+        const res = await Promise.all(
+          departments.map((d) =>
+            api.get<TeamDto[]>(`/api/teams/department/${d.id}`).then((r) => r.data).catch(() => []),
+          ),
+        );
+        setAllTeams(res.flat());
+      } catch {
+        setAllTeams([]);
+      }
+    })();
+  }, [departments]);
+
+  useEffect(() => {
     if (!staffDeptFilter) {
       setTeamsForDept([]);
       return;
@@ -131,6 +151,18 @@ export default function OrganizationAdminPage() {
         a.name.localeCompare(b.name),
     );
   }, [rows]);
+
+  const deptNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const d of departments) m.set(d.id, d.name);
+    return m;
+  }, [departments]);
+
+  const teamNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const t of allTeams) m.set(t.id, t.name);
+    return m;
+  }, [allTeams]);
 
   async function handleSubmit(form: StaffFormState) {
     try {
@@ -231,11 +263,11 @@ export default function OrganizationAdminPage() {
                       {u.role}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-zinc-500">
-                    {u.departmentId ? u.departmentId.slice(0, 8) + "…" : "—"}
+                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                    {u.departmentId ? deptNameById.get(u.departmentId) || "—" : "—"}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-zinc-500">
-                    {u.teamId ? u.teamId.slice(0, 8) + "…" : "—"}
+                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                    {u.teamId ? teamNameById.get(u.teamId) || "—" : "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button

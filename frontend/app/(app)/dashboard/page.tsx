@@ -4,7 +4,13 @@ import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import type { NotificationDto, PunchDto, WeeklyScheduleResponse } from "@/lib/types";
+import type {
+  DepartmentDto,
+  NotificationDto,
+  PunchDto,
+  TeamDto,
+  WeeklyScheduleResponse,
+} from "@/lib/types";
 import { ActiveStatusTimer } from "@/components/punch/ActiveStatusTimer";
 import { ScheduleConfirmModal } from "@/components/schedule/ScheduleConfirmModal";
 import { extractApiMessage } from "@/lib/errors";
@@ -13,6 +19,8 @@ import { toast } from "sonner";
 export default function DashboardPage() {
   const { name, role, employeeId, teamId, departmentId } = useAuthStore();
   const [punches, setPunches] = useState<PunchDto[]>([]);
+  const [deptName, setDeptName] = useState<string | null>(null);
+  const [teamName, setTeamName] = useState<string | null>(null);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [scheduleNotification, setScheduleNotification] = useState<NotificationDto | null>(null);
   const [schedulePayload, setSchedulePayload] = useState<WeeklyScheduleResponse | null>(null);
@@ -54,6 +62,29 @@ export default function DashboardPage() {
     return () => clearInterval(id);
   }, [checkScheduleNotifications]);
 
+  useEffect(() => {
+    if (role !== "EMPLOYEE") return;
+    void (async () => {
+      try {
+        const { data: deps } = await api.get<DepartmentDto[]>("/api/departments");
+        const dept = departmentId ? deps.find((d) => d.id === departmentId) : null;
+        setDeptName(dept?.name ?? null);
+        if (departmentId) {
+          const { data: teams } = await api.get<TeamDto[]>(
+            `/api/teams/department/${departmentId}`,
+          );
+          const t = teamId ? teams.find((x) => x.id === teamId) : null;
+          setTeamName(t?.name ?? null);
+        } else {
+          setTeamName(null);
+        }
+      } catch {
+        setDeptName(null);
+        setTeamName(null);
+      }
+    })();
+  }, [role, departmentId, teamId]);
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Dashboard</h1>
@@ -81,9 +112,9 @@ export default function DashboardPage() {
         <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
           <dt className="text-xs uppercase text-zinc-500">Department / Team</dt>
           <dd className="text-sm">
-            {departmentId ? <span className="font-mono">{departmentId.slice(0, 8)}…</span> : "—"}
+            {deptName ?? "—"}
             {" · "}
-            {teamId ? <span className="font-mono">{teamId.slice(0, 8)}…</span> : "—"}
+            {teamName ?? "—"}
           </dd>
         </div>
       </dl>

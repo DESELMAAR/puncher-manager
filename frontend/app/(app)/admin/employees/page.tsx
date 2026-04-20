@@ -46,8 +46,15 @@ export default function EmployeesAdminPage() {
   const [deleteTarget, setDeleteTarget] = useState<UserDto | null>(null);
 
   const employees = useMemo(
-    () => rows.filter((u) => u.role === "EMPLOYEE"),
-    [rows],
+    () => {
+      const base = rows.filter((u) => u.role === "EMPLOYEE");
+      if (viewerRole === "SUPER_ADMIN") {
+        if (!selectedDeptId) return base;
+        return base.filter((u) => u.departmentId === selectedDeptId);
+      }
+      return base;
+    },
+    [rows, viewerRole, selectedDeptId],
   );
 
   const loadUsers = useCallback(async () => {
@@ -67,7 +74,6 @@ export default function EmployeesAdminPage() {
   }, [loadUsers]);
 
   useEffect(() => {
-    if (viewerRole !== "SUPER_ADMIN" && viewerRole !== "ADMIN") return;
     void (async () => {
       try {
         const { data } = await api.get<DepartmentDto[]>("/api/departments");
@@ -77,7 +83,7 @@ export default function EmployeesAdminPage() {
         toast.error(extractApiMessage(e));
       }
     })();
-  }, [viewerRole]);
+  }, []);
 
   useEffect(() => {
     const deptId =
@@ -111,6 +117,18 @@ export default function EmployeesAdminPage() {
     }
     return teams.map((t) => ({ id: t.id, name: t.name }));
   }, [viewerRole, authTeamId, teams]);
+
+  const deptNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const d of departments) m.set(d.id, d.name);
+    return m;
+  }, [departments]);
+
+  const teamNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const t of teams) m.set(t.id, t.name);
+    return m;
+  }, [teams]);
 
   const canManage =
     viewerRole === "SUPER_ADMIN" ||
@@ -206,15 +224,16 @@ export default function EmployeesAdminPage() {
         </button>
       </header>
 
-      {(viewerRole === "SUPER_ADMIN" || viewerRole === "ADMIN") && departments.length > 0 && (
+      {viewerRole === "SUPER_ADMIN" && departments.length > 0 && (
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900/80">
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Department (for team list)
+            Department (filter)
             <select
               className="mt-2 w-full max-w-md rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
               value={selectedDeptId}
               onChange={(e) => setSelectedDeptId(e.target.value)}
             >
+              <option value="">All departments</option>
               {departments.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}
@@ -251,6 +270,9 @@ export default function EmployeesAdminPage() {
                     Employee ID
                   </th>
                   <th className="px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Status</th>
+                  <th className="px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-300">
+                    Department
+                  </th>
                   <th className="px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Team</th>
                   <th className="px-4 py-3 text-right font-semibold text-zinc-700 dark:text-zinc-300">
                     Actions
@@ -281,8 +303,11 @@ export default function EmployeesAdminPage() {
                         {u.status}
                       </span>
                     </td>
-                    <td className="max-w-[140px] truncate px-4 py-3 font-mono text-xs text-zinc-500">
-                      {u.teamId ?? "—"}
+                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                      {u.departmentId ? deptNameById.get(u.departmentId) || "—" : "—"}
+                    </td>
+                    <td className="max-w-[180px] truncate px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                      {u.teamId ? teamNameById.get(u.teamId) || "—" : "—"}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button

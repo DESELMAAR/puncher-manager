@@ -24,6 +24,12 @@ export default function DepartmentsAdminPage() {
     [users],
   );
 
+  const userNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const u of users) m.set(u.id, u.name);
+    return m;
+  }, [users]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -150,7 +156,7 @@ export default function DepartmentsAdminPage() {
                     {d.description ?? "—"}
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-zinc-500">
-                    {d.adminId ? d.adminId.slice(0, 8) + "…" : "—"}
+                    {d.adminId ? userNameById.get(d.adminId) || "—" : "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button

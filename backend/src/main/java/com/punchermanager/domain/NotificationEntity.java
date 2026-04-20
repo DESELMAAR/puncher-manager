@@ -2,6 +2,8 @@ package com.punchermanager.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -33,8 +35,15 @@ public class NotificationEntity {
   @JoinColumn(name = "team_id")
   private Team team;
 
+  @Enumerated(EnumType.STRING)
+  @Column(name = "notification_type", nullable = false)
+  private NotificationType notificationType = NotificationType.MESSAGE;
+
   @Column(nullable = false, columnDefinition = "TEXT")
   private String message;
+
+  @Column(name = "payload_json", columnDefinition = "TEXT")
+  private String payloadJson;
 
   @CreationTimestamp
   @Column(name = "created_at", nullable = false, updatable = false)
@@ -77,12 +86,28 @@ public class NotificationEntity {
     this.team = team;
   }
 
+  public NotificationType getNotificationType() {
+    return notificationType;
+  }
+
+  public void setNotificationType(NotificationType notificationType) {
+    this.notificationType = notificationType;
+  }
+
   public String getMessage() {
     return message;
   }
 
   public void setMessage(String message) {
     this.message = message;
+  }
+
+  public String getPayloadJson() {
+    return payloadJson;
+  }
+
+  public void setPayloadJson(String payloadJson) {
+    this.payloadJson = payloadJson;
   }
 
   public Instant getCreatedAt() {

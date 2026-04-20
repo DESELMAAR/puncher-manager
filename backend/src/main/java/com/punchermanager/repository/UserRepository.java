@@ -24,6 +24,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
   boolean existsByEmployeeId(String employeeId);
 
+  @EntityGraph(attributePaths = {"team", "department"})
+  Optional<User> findByEmployeeId(String employeeId);
+
   List<User> findByTeamId(UUID teamId);
 
   List<User> findByDepartmentIdAndRole(UUID departmentId, UserRole role);

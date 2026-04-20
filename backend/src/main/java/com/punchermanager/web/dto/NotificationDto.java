@@ -7,7 +7,9 @@ public record NotificationDto(
     UUID id,
     UUID senderId,
     String senderName,
+    String type,
     String message,
+    String payloadJson,
     Instant createdAt,
     boolean read,
     UUID teamId) {}

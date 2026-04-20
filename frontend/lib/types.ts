@@ -48,10 +48,36 @@ export interface NotificationDto {
   id: string;
   senderId: string;
   senderName: string;
+  type: string;
   message: string;
+  payloadJson: string | null;
   createdAt: string;
   read: boolean;
   teamId: string | null;
+}
+
+export type ScheduleConfirmationStatus =
+  | "PENDING"
+  | "CONFIRMED"
+  | "CORRECTION_REQUESTED";
+
+export interface WeeklyScheduleDayDto {
+  dayOfWeek: number; // 0=Sunday..6=Saturday
+  dayOff: boolean;
+  startTime: string | null; // HH:mm:ss
+  endTime: string | null; // HH:mm:ss
+}
+
+export interface WeeklyScheduleResponse {
+  scheduleId: string | null;
+  employeeId: string;
+  weekStart: string; // YYYY-MM-DD (Sunday)
+  createdByUserId: string | null;
+  updatedAt: string | null;
+  days: WeeklyScheduleDayDto[];
+  confirmationStatus: ScheduleConfirmationStatus;
+  confirmationComment: string | null;
+  respondedAt: string | null;
 }
 
 export interface UserDto {

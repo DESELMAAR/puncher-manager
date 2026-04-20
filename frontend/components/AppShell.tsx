@@ -12,6 +12,11 @@ const links: { href: string; label: string; roles: UserRole[] }[] = [
   { href: "/notifications", label: "Notifications", roles: ["SUPER_ADMIN", "ADMIN", "DEPT_MANAGER", "TEAM_LEADER", "EMPLOYEE"] },
   { href: "/team", label: "Team attendance", roles: ["TEAM_LEADER", "DEPT_MANAGER", "SUPER_ADMIN", "ADMIN"] },
   {
+    href: "/admin/schedule",
+    label: "Weekly schedule",
+    roles: ["SUPER_ADMIN", "ADMIN", "DEPT_MANAGER", "TEAM_LEADER"],
+  },
+  {
     href: "/admin/departments",
     label: "Departments",
     roles: ["SUPER_ADMIN", "ADMIN"],

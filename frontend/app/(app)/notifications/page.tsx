@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
-import type { NotificationDto } from "@/lib/types";
+import type { NotificationDto, WeeklyScheduleResponse } from "@/lib/types";
 import { useAuthStore } from "@/store/authStore";
+import { ScheduleConfirmModal } from "@/components/schedule/ScheduleConfirmModal";
 
 export default function NotificationsPage() {
   const token = useAuthStore((s) => s.token);
@@ -15,6 +16,13 @@ export default function NotificationsPage() {
     process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8080";
   const [items, setItems] = useState<NotificationDto[]>([]);
   const [hint, setHint] = useState<string | null>(null);
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [scheduleNotificationId, setScheduleNotificationId] = useState<string | null>(null);
+  const [schedulePayload, setSchedulePayload] = useState<WeeklyScheduleResponse | null>(null);
+
+  const unreadScheduleConfirm = useMemo(() => {
+    return items.find((n) => !n.read && n.type === "SCHEDULE_CONFIRM" && n.payloadJson);
+  }, [items]);
 
   async function load() {
     const { data } = await api.get<NotificationDto[]>("/api/notification/my");
@@ -46,6 +54,19 @@ export default function NotificationsPage() {
     void load();
   }
 
+  function openSchedule(n: NotificationDto) {
+    if (!n.payloadJson) return;
+    try {
+      const payload = JSON.parse(n.payloadJson as string) as WeeklyScheduleResponse;
+      if (!payload?.scheduleId) return;
+      setScheduleNotificationId(n.id);
+      setSchedulePayload(payload);
+      setScheduleModalOpen(true);
+    } catch {
+      // ignore bad payloads
+    }
+  }
+
   async function sendTeam() {
     if (!teamId || !sendText.trim()) return;
     setSendOk(null);
@@ -64,6 +85,23 @@ export default function NotificationsPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Notifications</h1>
+
+      {role === "EMPLOYEE" && unreadScheduleConfirm && (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/40">
+          <div className="text-sm font-semibold">Schedule awaiting confirmation</div>
+          <div className="mt-1 text-sm text-zinc-700 dark:text-zinc-200">
+            Open the schedule window to review your week before confirming.
+          </div>
+          <button
+            type="button"
+            className="mt-3 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
+            onClick={() => openSchedule(unreadScheduleConfirm)}
+          >
+            View schedule
+          </button>
+        </div>
+      )}
+
       {role === "TEAM_LEADER" && teamId && (
         <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
           <h2 className="font-semibold">Send to team</h2>
@@ -93,8 +131,22 @@ export default function NotificationsPage() {
               n.read ? "opacity-60" : "border-emerald-200 bg-emerald-50/50 dark:border-emerald-900"
             }`}
           >
-            <div className="text-sm font-medium">{n.senderName}</div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="text-sm font-medium">{n.senderName}</div>
+              <span className="rounded-md bg-zinc-100 px-2 py-0.5 font-mono text-[10px] dark:bg-zinc-800">
+                {n.type}
+              </span>
+            </div>
             <p className="mt-1 text-sm">{n.message}</p>
+            {role === "EMPLOYEE" && n.type === "SCHEDULE_CONFIRM" && n.payloadJson && (
+              <button
+                type="button"
+                className="mt-2 text-sm font-semibold text-emerald-700 hover:underline dark:text-emerald-300"
+                onClick={() => openSchedule(n)}
+              >
+                View schedule
+              </button>
+            )}
             <div className="mt-2 flex items-center justify-between text-xs text-zinc-500">
               <span>{new Date(n.createdAt).toLocaleString()}</span>
               {!n.read && (
@@ -111,6 +163,21 @@ export default function NotificationsPage() {
         ))}
       </ul>
       {items.length === 0 && <p className="text-zinc-500">No notifications yet.</p>}
+
+      {scheduleModalOpen && scheduleNotificationId && schedulePayload && (
+        <ScheduleConfirmModal
+          open={scheduleModalOpen}
+          notificationId={scheduleNotificationId}
+          schedule={schedulePayload}
+          onClose={() => setScheduleModalOpen(false)}
+          onConfirmed={() => {
+            setScheduleModalOpen(false);
+            setScheduleNotificationId(null);
+            setSchedulePayload(null);
+            void load();
+          }}
+        />
+      )}
     </div>
   );
 }

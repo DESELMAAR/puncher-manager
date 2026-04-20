@@ -1,6 +1,7 @@
 package com.punchermanager.service;
 
 import com.punchermanager.domain.NotificationEntity;
+import com.punchermanager.domain.NotificationType;
 import com.punchermanager.domain.Team;
 import com.punchermanager.domain.User;
 import com.punchermanager.domain.UserRole;
@@ -10,6 +11,7 @@ import com.punchermanager.repository.UserRepository;
 import com.punchermanager.web.dto.NotificationDto;
 import com.punchermanager.web.dto.SendNotificationRequest;
 import com.punchermanager.web.exception.ApiException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -23,16 +25,19 @@ public class NotificationService {
   private final TeamRepository teamRepository;
   private final UserRepository userRepository;
   private final SseNotificationBroadcaster broadcaster;
+  private final ObjectMapper objectMapper;
 
   public NotificationService(
       NotificationRepository notificationRepository,
       TeamRepository teamRepository,
       UserRepository userRepository,
-      SseNotificationBroadcaster broadcaster) {
+      SseNotificationBroadcaster broadcaster,
+      ObjectMapper objectMapper) {
     this.notificationRepository = notificationRepository;
     this.teamRepository = teamRepository;
     this.userRepository = userRepository;
     this.broadcaster = broadcaster;
+    this.objectMapper = objectMapper;
   }
 
   @Transactional
@@ -49,15 +54,48 @@ public class NotificationService {
     }
     List<User> recipients = userRepository.findEmployeesByTeamId(team.getId());
     for (User r : recipients) {
-      NotificationEntity entity = new NotificationEntity();
-      entity.setSender(sender);
-      entity.setReceiver(r);
-      entity.setTeam(null);
-      entity.setMessage(req.getMessage());
-      entity.setReadFlag(false);
-      NotificationEntity saved = notificationRepository.save(entity);
+      NotificationEntity saved =
+          createAndPublish(sender, r, NotificationType.MESSAGE, req.getMessage(), null);
       broadcaster.publish(r.getId(), "notification", toDto(saved));
     }
+  }
+
+  @Transactional
+  public NotificationEntity sendScheduleConfirm(User sender, User employee, Object payload) {
+    return createAndPublish(
+        sender,
+        employee,
+        NotificationType.SCHEDULE_CONFIRM,
+        "Please confirm your weekly schedule.",
+        payload);
+  }
+
+  @Transactional
+  public NotificationEntity sendScheduleResponse(User sender, User manager, String message, Object payload) {
+    return createAndPublish(sender, manager, NotificationType.SCHEDULE_RESPONSE, message, payload);
+  }
+
+  private NotificationEntity createAndPublish(
+      User sender, User receiver, NotificationType type, String message, Object payload) {
+    NotificationEntity entity = new NotificationEntity();
+    entity.setSender(sender);
+    entity.setReceiver(receiver);
+    entity.setTeam(null);
+    entity.setNotificationType(type);
+    entity.setMessage(message);
+    entity.setReadFlag(false);
+    if (payload != null) {
+      try {
+        entity.setPayloadJson(objectMapper.writeValueAsString(payload));
+      } catch (Exception e) {
+        throw new ApiException(HttpStatus.BAD_REQUEST, "Could not serialize notification payload");
+      }
+    } else {
+      entity.setPayloadJson(null);
+    }
+    NotificationEntity saved = notificationRepository.save(entity);
+    broadcaster.publish(receiver.getId(), "notification", toDto(saved));
+    return saved;
   }
 
   @Transactional(readOnly = true)
@@ -85,7 +123,9 @@ public class NotificationService {
         n.getId(),
         n.getSender().getId(),
         n.getSender().getName(),
+        n.getNotificationType() != null ? n.getNotificationType().name() : NotificationType.MESSAGE.name(),
         n.getMessage(),
+        n.getPayloadJson(),
         n.getCreatedAt(),
         n.isReadFlag(),
         null);

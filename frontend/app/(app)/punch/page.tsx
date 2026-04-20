@@ -58,7 +58,7 @@ export default function PunchPage() {
       {msg && <p className="rounded bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/40">{msg}</p>}
       <div className="grid gap-3 sm:grid-cols-2">
         {PUNCH_ORDER.map((t) => {
-          const active = next === t;
+          const active = t === "WORK_START" || next === t;
           return (
             <button
               key={t}
@@ -76,9 +76,6 @@ export default function PunchPage() {
           );
         })}
       </div>
-      {next === null && (
-        <p className="text-emerald-600 dark:text-emerald-400">Shift completed for today.</p>
-      )}
       <div>
         <h2 className="mb-2 font-semibold">Today&apos;s log</h2>
         <ul className="space-y-1 text-sm text-zinc-600 dark:text-zinc-400">

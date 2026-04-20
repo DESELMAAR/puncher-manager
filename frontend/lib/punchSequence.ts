@@ -25,7 +25,7 @@ export function nextExpectedPunch(todayPunches: PunchDto[]): PunchType | null {
     (a, b) => new Date(a.punchedAt).getTime() - new Date(b.punchedAt).getTime(),
   );
   const last = sorted[sorted.length - 1].type;
-  if (last === "LOGOUT") return null;
+  if (last === "LOGOUT") return "WORK_START";
   const idx = PUNCH_ORDER.indexOf(last);
   if (idx < 0 || idx >= PUNCH_ORDER.length - 1) return null;
   return PUNCH_ORDER[idx + 1];

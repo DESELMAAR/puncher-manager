@@ -56,11 +56,8 @@ public class PunchService {
             day.plusDays(1).atStartOfDay(ZONE).toInstant());
 
     PunchType expected = resolveExpectedNext(dayPunches);
-    if (expected == null) {
-      throw new ApiException(
-          HttpStatus.BAD_REQUEST, "Shift already completed for this day. Cannot punch again.");
-    }
-    if (request.getType() != expected) {
+    // Allow employees to switch back to "on work" at any time.
+    if (request.getType() != PunchType.WORK_START && request.getType() != expected) {
       throw new ApiException(
           HttpStatus.BAD_REQUEST,
           "Cannot register "
@@ -89,7 +86,8 @@ public class PunchService {
     }
     PunchType last = dayPunchesOrdered.get(dayPunchesOrdered.size() - 1).getPunchType();
     if (last == PunchType.LOGOUT) {
-      return null;
+      // Allow restarting a new work cycle after ending a shift.
+      return PunchType.WORK_START;
     }
     int idx = SEQUENCE.indexOf(last);
     if (idx < 0 || idx >= SEQUENCE.size() - 1) {

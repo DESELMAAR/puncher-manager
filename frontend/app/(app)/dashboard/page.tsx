@@ -2,9 +2,29 @@
 
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
+import { useCallback, useEffect, useState } from "react";
+import { api } from "@/lib/api";
+import type { PunchDto } from "@/lib/types";
+import { ActiveStatusTimer } from "@/components/punch/ActiveStatusTimer";
 
 export default function DashboardPage() {
   const { name, role, employeeId, teamId, departmentId } = useAuthStore();
+  const [punches, setPunches] = useState<PunchDto[]>([]);
+
+  const refresh = useCallback(async () => {
+    const day = new Date().toISOString().slice(0, 10);
+    const { data } = await api.get<PunchDto[]>("/api/punch/my-history", {
+      params: { from: day, to: day },
+    });
+    setPunches(data);
+  }, []);
+
+  useEffect(() => {
+    if (role !== "EMPLOYEE") return;
+    void refresh();
+    const id = setInterval(() => void refresh(), 15_000);
+    return () => clearInterval(id);
+  }, [role, refresh]);
 
   return (
     <div className="space-y-6">
@@ -12,6 +32,7 @@ export default function DashboardPage() {
       <p className="text-zinc-600 dark:text-zinc-400">
         Welcome, {name}. You are signed in as <strong>{role}</strong>.
       </p>
+      {role === "EMPLOYEE" && <ActiveStatusTimer punches={punches} />}
       <dl className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
           <dt className="text-xs uppercase text-zinc-500">Employee ID</dt>

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import type { PunchDto, PunchType } from "@/lib/types";
 import { labelPunch, nextExpectedPunch, PUNCH_ORDER } from "@/lib/punchSequence";
+import { ActiveStatusTimer } from "@/components/punch/ActiveStatusTimer";
+import { formatDurationMs } from "@/lib/time";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -52,6 +54,7 @@ export default function PunchPage() {
       <p className="text-sm text-zinc-500">
         Today ({todayISO()}). Only the next action in sequence is enabled.
       </p>
+      <ActiveStatusTimer punches={punches} />
       {msg && <p className="rounded bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/40">{msg}</p>}
       <div className="grid gap-3 sm:grid-cols-2">
         {PUNCH_ORDER.map((t) => {
@@ -79,11 +82,25 @@ export default function PunchPage() {
       <div>
         <h2 className="mb-2 font-semibold">Today&apos;s log</h2>
         <ul className="space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
-          {punches.map((p) => (
-            <li key={p.id}>
-              {p.type} — {new Date(p.punchedAt).toLocaleTimeString()}
-            </li>
-          ))}
+          {[...punches]
+            .sort((a, b) => new Date(a.punchedAt).getTime() - new Date(b.punchedAt).getTime())
+            .map((p, idx, arr) => {
+              const t0 = new Date(p.punchedAt).getTime();
+              const t1 = arr[idx + 1] ? new Date(arr[idx + 1]!.punchedAt).getTime() : Date.now();
+              const closed = !!arr[idx + 1];
+              const dur = formatDurationMs(Math.max(0, t1 - t0));
+              return (
+                <li key={p.id} className="flex flex-wrap items-center justify-between gap-2">
+                  <span>
+                    <span className="font-mono">{p.type}</span> —{" "}
+                    {new Date(p.punchedAt).toLocaleTimeString()}
+                  </span>
+                  <span className="font-mono text-xs text-zinc-500">
+                    {closed ? `+ ${dur}` : `running ${dur}`}
+                  </span>
+                </li>
+              );
+            })}
         </ul>
       </div>
     </div>

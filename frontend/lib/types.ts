@@ -42,6 +42,9 @@ export interface AttendanceRow {
   actualStart: string | null;
   minutesLate: number | null;
   punches: PunchDto[];
+  /** SUPER_ADMIN / ADMIN only: matches weekly schedule vs punches */
+  scheduleVsPlanOk?: boolean | null;
+  scheduleVsPlanNote?: string | null;
 }
 
 export interface NotificationDto {

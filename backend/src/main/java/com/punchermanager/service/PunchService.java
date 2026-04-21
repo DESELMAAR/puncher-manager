@@ -31,8 +31,6 @@ public class PunchService {
           PunchType.BREAK2_END,
           PunchType.LOGOUT);
 
-  private static final ZoneId ZONE = ZoneId.systemDefault();
-
   private final PunchRepository punchRepository;
   private final AttendanceService attendanceService;
 
@@ -41,19 +39,34 @@ public class PunchService {
     this.attendanceService = attendanceService;
   }
 
+  /**
+   * Uses the browser's IANA zone ({@code X-Client-Timezone}) so punch-day and sequence validation match
+   * {@code GET /my-history} civil dates in that zone.
+   */
+  public static ZoneId resolveClientZone(String headerValue) {
+    if (headerValue == null || headerValue.isBlank()) {
+      return ZoneId.systemDefault();
+    }
+    try {
+      return ZoneId.of(headerValue.trim());
+    } catch (Exception e) {
+      return ZoneId.systemDefault();
+    }
+  }
+
   @Transactional
-  public PunchResponse punch(User user, PunchRequest request) {
+  public PunchResponse punch(User user, PunchRequest request, ZoneId zone) {
     if (user.getRole() != UserRole.EMPLOYEE) {
       throw new ApiException(HttpStatus.FORBIDDEN, "Only employees can punch");
     }
     Instant when = request.getTimestamp() != null ? request.getTimestamp() : Instant.now();
-    LocalDate day = LocalDate.ofInstant(when, ZONE);
+    LocalDate day = LocalDate.ofInstant(when, zone);
 
     List<Punch> dayPunches =
         punchRepository.findByUserAndRange(
             user.getId(),
-            day.atStartOfDay(ZONE).toInstant(),
-            day.plusDays(1).atStartOfDay(ZONE).toInstant());
+            day.atStartOfDay(zone).toInstant(),
+            day.plusDays(1).atStartOfDay(zone).toInstant());
 
     PunchType expected = resolveExpectedNext(dayPunches);
     // Allow employees to switch back to "on work" at any time.
@@ -97,9 +110,9 @@ public class PunchService {
   }
 
   @Transactional(readOnly = true)
-  public List<PunchResponse> myHistory(User user, LocalDate from, LocalDate to) {
-    Instant start = from.atStartOfDay(ZONE).toInstant();
-    Instant end = to.plusDays(1).atStartOfDay(ZONE).toInstant();
+  public List<PunchResponse> myHistory(User user, LocalDate from, LocalDate to, ZoneId zone) {
+    Instant start = from.atStartOfDay(zone).toInstant();
+    Instant end = to.plusDays(1).atStartOfDay(zone).toInstant();
     return punchRepository.findByUserAndRange(user.getId(), start, end).stream()
         .map(p -> new PunchResponse(p.getId(), p.getPunchType(), p.getPunchedAt()))
         .toList();

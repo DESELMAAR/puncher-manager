@@ -2,11 +2,13 @@ package com.punchermanager.web.controller;
 
 import com.punchermanager.domain.User;
 import com.punchermanager.service.AttendanceService;
+import com.punchermanager.service.PunchService;
 import com.punchermanager.service.UserContextService;
 import com.punchermanager.web.dto.AttendanceRowDto;
 import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -41,7 +43,8 @@ public class AttendanceController {
       @PathVariable UUID teamId,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
     User user = userContextService.requireCurrentUser(http);
-    return attendanceService.teamAttendance(teamId, date, user);
+    ZoneId zone = PunchService.resolveClientZone(http.getHeader("X-Client-Timezone"));
+    return attendanceService.teamAttendance(teamId, date, user, zone);
   }
 
   @GetMapping(value = "/team/{teamId}/export", produces = "text/csv")
@@ -51,9 +54,11 @@ public class AttendanceController {
       @PathVariable UUID teamId,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
     User user = userContextService.requireCurrentUser(http);
-    List<AttendanceRowDto> rows = attendanceService.teamAttendance(teamId, date, user);
+    ZoneId zone = PunchService.resolveClientZone(http.getHeader("X-Client-Timezone"));
+    List<AttendanceRowDto> rows = attendanceService.teamAttendance(teamId, date, user, zone);
     StringBuilder sb = new StringBuilder();
-    sb.append("employeeId,name,date,status,expectedStart,actualStart,minutesLate,punchSummary\n");
+    sb.append(
+        "employeeId,name,date,status,expectedStart,actualStart,minutesLate,punchSummary,scheduleVsPlanOk,scheduleVsPlanNote\n");
     for (AttendanceRowDto r : rows) {
       String punches =
           r.punches() == null
@@ -72,7 +77,9 @@ public class AttendanceController {
               r.expectedStart() != null ? r.expectedStart().toString() : "",
               r.actualStart() != null ? r.actualStart().toString() : "",
               r.minutesLate() != null ? r.minutesLate().toString() : "",
-              escape(punches)));
+              escape(punches),
+              r.scheduleVsPlanOk() != null ? r.scheduleVsPlanOk().toString() : "",
+              escape(r.scheduleVsPlanNote())));
       sb.append('\n');
     }
     byte[] bytes = sb.toString().getBytes(StandardCharsets.UTF_8);

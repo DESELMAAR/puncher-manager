@@ -3,14 +3,15 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import type { PunchDto } from "@/lib/types";
+import { localDateISO } from "@/lib/dateUtils";
 
 export default function HistoryPage() {
   const [from, setFrom] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 7);
-    return d.toISOString().slice(0, 10);
+    return localDateISO(d);
   });
-  const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [to, setTo] = useState(() => localDateISO());
   const [rows, setRows] = useState<PunchDto[]>([]);
 
   useEffect(() => {

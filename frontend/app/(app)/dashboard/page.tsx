@@ -12,9 +12,11 @@ import type {
   WeeklyScheduleResponse,
 } from "@/lib/types";
 import { ActiveStatusTimer } from "@/components/punch/ActiveStatusTimer";
+import { DashboardWeeklySchedule } from "@/components/schedule/DashboardWeeklySchedule";
 import { ScheduleConfirmModal } from "@/components/schedule/ScheduleConfirmModal";
 import { extractApiMessage } from "@/lib/errors";
 import { toast } from "sonner";
+import { localDateISO } from "@/lib/dateUtils";
 
 export default function DashboardPage() {
   const { name, role, employeeId, teamId, departmentId } = useAuthStore();
@@ -26,7 +28,7 @@ export default function DashboardPage() {
   const [schedulePayload, setSchedulePayload] = useState<WeeklyScheduleResponse | null>(null);
 
   const refresh = useCallback(async () => {
-    const day = new Date().toISOString().slice(0, 10);
+    const day = localDateISO();
     const { data } = await api.get<PunchDto[]>("/api/punch/my-history", {
       params: { from: day, to: day },
     });
@@ -118,28 +120,31 @@ export default function DashboardPage() {
           </dd>
         </div>
       </dl>
-      <div className="flex flex-wrap gap-3">
-        {role === "EMPLOYEE" && (
-          <>
-            <Link
-              href="/punch"
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700"
-            >
-              Go to Punch
+      <div className="space-y-4">
+        <div className="flex flex-wrap gap-3">
+          {role === "EMPLOYEE" && (
+            <>
+              <Link
+                href="/punch"
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700"
+              >
+                Go to Punch
+              </Link>
+              <Link href="/history" className="rounded-lg border border-zinc-300 px-4 py-2 dark:border-zinc-600">
+                Punch history
+              </Link>
+            </>
+          )}
+          {(role === "TEAM_LEADER" || role === "DEPT_MANAGER" || role === "SUPER_ADMIN" || role === "ADMIN") && (
+            <Link href="/team" className="rounded-lg bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700">
+              Team attendance
             </Link>
-            <Link href="/history" className="rounded-lg border border-zinc-300 px-4 py-2 dark:border-zinc-600">
-              Punch history
-            </Link>
-          </>
-        )}
-        {(role === "TEAM_LEADER" || role === "DEPT_MANAGER" || role === "SUPER_ADMIN" || role === "ADMIN") && (
-          <Link href="/team" className="rounded-lg bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700">
-            Team attendance
+          )}
+          <Link href="/notifications" className="rounded-lg border border-zinc-300 px-4 py-2 dark:border-zinc-600">
+            Notifications
           </Link>
-        )}
-        <Link href="/notifications" className="rounded-lg border border-zinc-300 px-4 py-2 dark:border-zinc-600">
-          Notifications
-        </Link>
+        </div>
+        {role === "EMPLOYEE" && <DashboardWeeklySchedule />}
       </div>
     </div>
   );

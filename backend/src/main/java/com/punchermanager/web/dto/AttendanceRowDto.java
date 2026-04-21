@@ -15,4 +15,8 @@ public record AttendanceRowDto(
     LocalTime expectedStart,
     LocalTime actualStart,
     Integer minutesLate,
-    List<PunchResponse> punches) {}
+    List<PunchResponse> punches,
+    /** SUPER_ADMIN / ADMIN only: whether punches match weekly schedule for this date. */
+    Boolean scheduleVsPlanOk,
+    /** SUPER_ADMIN / ADMIN only: short explanation or "OK". */
+    String scheduleVsPlanNote) {}

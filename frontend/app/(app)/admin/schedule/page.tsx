@@ -11,20 +11,9 @@ import type {
   WeeklyScheduleResponse,
 } from "@/lib/types";
 import { useAuthStore } from "@/store/authStore";
+import { localDateISO, normalizeWeekStartSunday } from "@/lib/dateUtils";
 
 const DOW_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function normalizeWeekStart(isoDate: string) {
-  const d = new Date(isoDate + "T00:00:00");
-  // JS: Sunday=0..Saturday=6
-  const day = d.getDay();
-  d.setDate(d.getDate() - day);
-  return d.toISOString().slice(0, 10);
-}
 
 function toTimeHHmmss(v: string) {
   if (!v) return null;
@@ -60,7 +49,7 @@ export default function WeeklyScheduleAdminPage() {
 
   const [users, setUsers] = useState<UserDto[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
-  const [weekStart, setWeekStart] = useState<string>(normalizeWeekStart(todayISO()));
+  const [weekStart, setWeekStart] = useState<string>(normalizeWeekStartSunday(localDateISO()));
   const [loading, setLoading] = useState(true);
 
   const [schedule, setSchedule] = useState<WeeklyScheduleResponse | null>(null);
@@ -204,7 +193,7 @@ export default function WeeklyScheduleAdminPage() {
                   type="date"
                   className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-950"
                   value={weekStart}
-                  onChange={(e) => setWeekStart(normalizeWeekStart(e.target.value))}
+                  onChange={(e) => setWeekStart(normalizeWeekStartSunday(e.target.value))}
                 />
               </label>
               <label className="mt-4 block text-sm font-medium">

@@ -6,10 +6,7 @@ import type { PunchDto, PunchType } from "@/lib/types";
 import { labelPunch, nextExpectedPunch } from "@/lib/punchSequence";
 import { ActiveStatusTimer } from "@/components/punch/ActiveStatusTimer";
 import { formatDurationMs } from "@/lib/time";
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
+import { localDateISO } from "@/lib/dateUtils";
 
 export default function PunchPage() {
   const [punches, setPunches] = useState<PunchDto[]>([]);
@@ -18,7 +15,7 @@ export default function PunchPage() {
   const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
-    const day = todayISO();
+    const day = localDateISO();
     const { data } = await api.get<PunchDto[]>("/api/punch/my-history", {
       params: { from: day, to: day },
     });
@@ -61,7 +58,7 @@ export default function PunchPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Punch</h1>
       <p className="text-sm text-zinc-500">
-        Today ({todayISO()}). Only the next action in sequence is enabled.
+        Today ({localDateISO()}). Only the next action in sequence is enabled.
       </p>
       <ActiveStatusTimer punches={punches} />
       {msg && <p className="rounded bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/40">{msg}</p>}

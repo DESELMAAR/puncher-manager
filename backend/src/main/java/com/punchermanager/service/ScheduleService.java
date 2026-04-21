@@ -215,6 +215,11 @@ public class ScheduleService {
           throw new ApiException(HttpStatus.FORBIDDEN, "Outside your team");
         }
       }
+      case EMPLOYEE -> {
+        if (!actor.getId().equals(employee.getId())) {
+          throw new ApiException(HttpStatus.FORBIDDEN, "Cannot view another employee's schedule");
+        }
+      }
       default -> throw new ApiException(HttpStatus.FORBIDDEN, "Insufficient role");
     }
   }

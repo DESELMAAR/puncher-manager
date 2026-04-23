@@ -27,6 +27,7 @@ com\punchermanager\service\ScheduleService$1.class
 com\punchermanager\web\controller\ScheduleController.class
 com\punchermanager\domain\UserStatus.class
 com\punchermanager\repository\PunchRepository.class
+com\punchermanager\bootstrap\DataSeeder$1StudyTeamSpec.class
 com\punchermanager\service\AttendanceService.class
 com\punchermanager\repository\WeeklyScheduleRepository.class
 com\punchermanager\web\exception\ApiException.class
@@ -73,4 +74,5 @@ com\punchermanager\domain\ScheduleConfirmationStatus.class
 com\punchermanager\repository\NotificationRepository.class
 com\punchermanager\service\UserAdminService$1.class
 com\punchermanager\web\controller\AttendanceController.class
+com\punchermanager\web\dto\AttendanceOverviewGroupDto.class
 com\punchermanager\web\exception\GlobalExceptionHandler.class

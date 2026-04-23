@@ -47,6 +47,14 @@ export interface AttendanceRow {
   scheduleVsPlanNote?: string | null;
 }
 
+export interface AttendanceOverviewGroupDto {
+  departmentId: string;
+  departmentName: string;
+  teamId: string;
+  teamName: string;
+  rows: AttendanceRow[];
+}
+
 export interface NotificationDto {
   id: string;
   senderId: string;

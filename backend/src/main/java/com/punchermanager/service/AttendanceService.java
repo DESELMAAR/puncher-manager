@@ -12,6 +12,7 @@ import com.punchermanager.repository.AttendanceRecordRepository;
 import com.punchermanager.repository.PunchRepository;
 import com.punchermanager.repository.TeamRepository;
 import com.punchermanager.repository.UserRepository;
+import com.punchermanager.web.dto.AttendanceOverviewGroupDto;
 import com.punchermanager.web.dto.AttendanceRowDto;
 import com.punchermanager.web.dto.PlanningResponseDto;
 import com.punchermanager.web.dto.PunchResponse;
@@ -25,7 +26,9 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -202,6 +205,52 @@ public class AttendanceService {
     return rows;
   }
 
+  @Transactional(readOnly = true)
+  public List<AttendanceOverviewGroupDto> overview(LocalDate date, User requester, ZoneId zone) {
+    List<Team> teamsInScope = resolveTeamsInScope(requester);
+    Map<UUID, Team> byId = new LinkedHashMap<>();
+    for (Team t : teamsInScope) {
+      byId.put(t.getId(), t);
+    }
+
+    List<AttendanceOverviewGroupDto> out = new ArrayList<>();
+    for (Team t : byId.values()) {
+      List<AttendanceRowDto> rows = teamAttendance(t.getId(), date, requester, zone);
+      out.add(
+          new AttendanceOverviewGroupDto(
+              t.getDepartment().getId(), t.getDepartment().getName(), t.getId(), t.getName(), rows));
+    }
+    return out;
+  }
+
+  private List<Team> resolveTeamsInScope(User requester) {
+    return switch (requester.getRole()) {
+      case SUPER_ADMIN, ADMIN -> teamRepository.findAll().stream()
+          .map(t -> teamRepository.findByIdFetched(t.getId()).orElse(t))
+          .toList();
+      case DEPT_MANAGER -> {
+        if (requester.getDepartment() == null) {
+          throw new ApiException(HttpStatus.FORBIDDEN, "No department assigned");
+        }
+        UUID deptId = requester.getDepartment().getId();
+        yield teamRepository.findByDepartmentId(deptId).stream()
+            .map(t -> teamRepository.findByIdFetched(t.getId()).orElse(t))
+            .toList();
+      }
+      case TEAM_LEADER -> {
+        if (requester.getTeam() == null) {
+          throw new ApiException(HttpStatus.FORBIDDEN, "No team assigned");
+        }
+        Team t =
+            teamRepository
+                .findByIdFetched(requester.getTeam().getId())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Team not found"));
+        yield List.of(t);
+      }
+      default -> throw new ApiException(HttpStatus.FORBIDDEN, "Insufficient role");
+    };
+  }
+
   private record ScheduleVsPlanResult(boolean ok, String note) {}
 
   /**
@@ -261,6 +310,19 @@ public class AttendanceService {
     }
 
     if (lastLogout == null) {
+      LocalDate today = LocalDate.now(zone);
+      Instant scheduledEnd = expectedEnd.atDate(date).atZone(zone).toInstant();
+      Instant now = Instant.now();
+      // If the shift hasn't ended yet (today) or is in the future, don't flag missing LOGOUT.
+      if (date.isAfter(today) || (date.equals(today) && now.isBefore(scheduledEnd))) {
+        return new ScheduleVsPlanResult(
+            true,
+            "In progress (scheduled shift "
+                + shiftWindow
+                + ", end "
+                + fmtTime(expectedEnd)
+                + ")");
+      }
       return new ScheduleVsPlanResult(
           false,
           "Missing LOGOUT (scheduled shift " + shiftWindow + ", end " + fmtTime(expectedEnd) + ")");

@@ -4,6 +4,7 @@ import com.punchermanager.domain.User;
 import com.punchermanager.service.AttendanceService;
 import com.punchermanager.service.PunchService;
 import com.punchermanager.service.UserContextService;
+import com.punchermanager.web.dto.AttendanceOverviewGroupDto;
 import com.punchermanager.web.dto.AttendanceRowDto;
 import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
@@ -45,6 +46,16 @@ public class AttendanceController {
     User user = userContextService.requireCurrentUser(http);
     ZoneId zone = PunchService.resolveClientZone(http.getHeader("X-Client-Timezone"));
     return attendanceService.teamAttendance(teamId, date, user, zone);
+  }
+
+  @GetMapping("/overview")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','DEPT_MANAGER','TEAM_LEADER')")
+  public List<AttendanceOverviewGroupDto> overview(
+      HttpServletRequest http,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+    User user = userContextService.requireCurrentUser(http);
+    ZoneId zone = PunchService.resolveClientZone(http.getHeader("X-Client-Timezone"));
+    return attendanceService.overview(date, user, zone);
   }
 
   @GetMapping(value = "/team/{teamId}/export", produces = "text/csv")

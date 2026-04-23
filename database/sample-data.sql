@@ -1,4 +1,6 @@
 -- Sample data for Puncher Manager demos
+-- Fictional teams, leaders, and on-time / late attendance: see `DataSeeder` in the backend
+-- (Nebula Nine, Polaris Patrol, Quantum Quorum) — uses the most recent weekday in JVM default zone.
 -- Passwords are placeholders; the Spring Boot app seeds the real Super Admin via BCrypt.
 -- If loading manually, generate BCrypt for "admin123" / "demo123" and replace below.
 

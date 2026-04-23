@@ -32,6 +32,7 @@ C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\d
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\NotificationEntity.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\ScheduleRespondRequest.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\controller\PlanningMockController.java
+C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\AttendanceOverviewGroupDto.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\PlanningResponseDto.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\PunchType.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\UserAdminService.java

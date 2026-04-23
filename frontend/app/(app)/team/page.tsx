@@ -1,8 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
-import type { AttendanceRow, DepartmentDto, TeamDto } from "@/lib/types";
+import type {
+  AttendanceOverviewGroupDto,
+  AttendanceRow,
+  DepartmentDto,
+  TeamDto,
+} from "@/lib/types";
 import { useAuthStore } from "@/store/authStore";
 import { localDateISO } from "@/lib/dateUtils";
 
@@ -34,6 +39,8 @@ export default function TeamPage() {
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [date, setDate] = useState(() => localDateISO());
   const [rows, setRows] = useState<AttendanceRow[]>([]);
+  const [overviewMode, setOverviewMode] = useState(false);
+  const [overview, setOverview] = useState<AttendanceOverviewGroupDto[]>([]);
 
   const loadTeamsForDepartment = useCallback(async (deptId: string) => {
     const { data } = await api.get<TeamDto[]>(`/api/teams/department/${deptId}`);
@@ -131,6 +138,7 @@ export default function TeamPage() {
   }
 
   useEffect(() => {
+    if (overviewMode) return;
     if (!selectedTeam) return;
     void (async () => {
       const { data } = await api.get<AttendanceRow[]>(`/api/attendance/team/${selectedTeam}`, {
@@ -138,9 +146,20 @@ export default function TeamPage() {
       });
       setRows(data);
     })();
-  }, [selectedTeam, date]);
+  }, [overviewMode, selectedTeam, date]);
+
+  useEffect(() => {
+    if (!overviewMode) return;
+    void (async () => {
+      const { data } = await api.get<AttendanceOverviewGroupDto[]>(`/api/attendance/overview`, {
+        params: { date },
+      });
+      setOverview(data);
+    })();
+  }, [overviewMode, date]);
 
   function exportCsv() {
+    if (overviewMode) return;
     if (!selectedTeam) return;
     const baseURL =
       process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8080";
@@ -162,6 +181,8 @@ export default function TeamPage() {
 
   const showDepartmentPicker =
     role === "SUPER_ADMIN" || role === "ADMIN" ? departments.length > 0 : false;
+
+  const grouped = useMemo(() => overview, [overview]);
 
   return (
     <div className="space-y-4">
@@ -222,6 +243,15 @@ export default function TeamPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         <label className="text-sm">
+          <input
+            type="checkbox"
+            className="mr-2 align-middle"
+            checked={overviewMode}
+            onChange={(e) => setOverviewMode(e.target.checked)}
+          />
+          Overview (all teams)
+        </label>
+        <label className="text-sm">
           Date{" "}
           <input
             type="date"
@@ -233,56 +263,134 @@ export default function TeamPage() {
         <button
           type="button"
           onClick={exportCsv}
+          disabled={overviewMode || !selectedTeam}
           className="rounded-lg border border-zinc-300 px-3 py-1 text-sm dark:border-zinc-600"
         >
           Export CSV
         </button>
       </div>
-      <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
-        <table className="min-w-full text-left text-sm">
-          <thead className="bg-zinc-100 dark:bg-zinc-900">
-            <tr>
-              <th className="p-2">Employee</th>
-              <th className="p-2">Status</th>
-              {showScheduleVsPlan && (
-                <th className="p-2" title="Compared to weekly schedule (start / end shift)">
-                  Schedule
-                </th>
-              )}
-              <th className="p-2">Punches</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.userId} className="border-t border-zinc-200 dark:border-zinc-800">
-                <td className="p-2">
-                  {r.name}
-                  <div className="font-mono text-xs text-zinc-500">{r.employeeId}</div>
-                </td>
-                <td className="p-2">{r.status ?? "—"}</td>
+
+      {!overviewMode && (
+        <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-zinc-100 dark:bg-zinc-900">
+              <tr>
+                <th className="p-2">Employee</th>
+                <th className="p-2">Status</th>
                 {showScheduleVsPlan && (
-                  <td className="p-2 text-center" title={r.scheduleVsPlanNote ?? undefined}>
-                    {r.scheduleVsPlanOk === true && (
-                      <span className="text-lg text-emerald-600 dark:text-emerald-400" aria-label="OK">
-                        ✓
-                      </span>
-                    )}
-                    {r.scheduleVsPlanOk === false && (
-                      <span className="text-lg text-amber-600 dark:text-amber-400" aria-label="Issue">
-                        ⚠
-                      </span>
-                    )}
-                    {r.scheduleVsPlanOk == null && <span className="text-zinc-400">—</span>}
-                  </td>
+                  <th className="p-2" title="Compared to weekly schedule (start / end shift)">
+                    Schedule
+                  </th>
                 )}
-                <td className="p-2 text-xs">
-                  {r.punches?.map((p) => p.type).join(", ") || "—"}
-                </td>
+                <th className="p-2">Punches</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.userId} className="border-t border-zinc-200 dark:border-zinc-800">
+                  <td className="p-2">
+                    {r.name}
+                    <div className="font-mono text-xs text-zinc-500">{r.employeeId}</div>
+                  </td>
+                  <td className="p-2">{r.status ?? "—"}</td>
+                  {showScheduleVsPlan && (
+                    <td className="p-2 text-center" title={r.scheduleVsPlanNote ?? undefined}>
+                      {r.scheduleVsPlanOk === true && (
+                        <span
+                          className="text-lg text-emerald-600 dark:text-emerald-400"
+                          aria-label="OK"
+                        >
+                          ✓
+                        </span>
+                      )}
+                      {r.scheduleVsPlanOk === false && (
+                        <span
+                          className="text-lg text-amber-600 dark:text-amber-400"
+                          aria-label="Issue"
+                        >
+                          ⚠
+                        </span>
+                      )}
+                      {r.scheduleVsPlanOk == null && <span className="text-zinc-400">—</span>}
+                    </td>
+                  )}
+                  <td className="p-2 text-xs">
+                    {r.punches?.map((p) => p.type).join(", ") || "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {overviewMode && (
+        <div className="space-y-3">
+          {grouped.map((g) => (
+            <div
+              key={g.teamId}
+              className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800"
+            >
+              <div className="flex flex-wrap items-baseline justify-between gap-2 bg-zinc-100 px-3 py-2 dark:bg-zinc-900">
+                <div className="font-medium">
+                  {g.departmentName} / {g.teamName}
+                </div>
+                <div className="text-xs text-zinc-500">
+                  {g.rows.length} employee{g.rows.length === 1 ? "" : "s"}
+                </div>
+              </div>
+              <table className="min-w-full text-left text-sm">
+                <thead>
+                  <tr className="border-t border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+                    <th className="p-2">Employee</th>
+                    <th className="p-2">Status</th>
+                    {showScheduleVsPlan && <th className="p-2">Schedule</th>}
+                    <th className="p-2">Punches</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {g.rows.map((r) => (
+                    <tr key={r.userId} className="border-t border-zinc-200 dark:border-zinc-800">
+                      <td className="p-2">
+                        {r.name}
+                        <div className="font-mono text-xs text-zinc-500">{r.employeeId}</div>
+                      </td>
+                      <td className="p-2">{r.status ?? "—"}</td>
+                      {showScheduleVsPlan && (
+                        <td className="p-2 text-center" title={r.scheduleVsPlanNote ?? undefined}>
+                          {r.scheduleVsPlanOk === true && (
+                            <span
+                              className="text-lg text-emerald-600 dark:text-emerald-400"
+                              aria-label="OK"
+                            >
+                              ✓
+                            </span>
+                          )}
+                          {r.scheduleVsPlanOk === false && (
+                            <span
+                              className="text-lg text-amber-600 dark:text-amber-400"
+                              aria-label="Issue"
+                            >
+                              ⚠
+                            </span>
+                          )}
+                          {r.scheduleVsPlanOk == null && <span className="text-zinc-400">—</span>}
+                        </td>
+                      )}
+                      <td className="p-2 text-xs">
+                        {r.punches?.map((p) => p.type).join(", ") || "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
+          {grouped.length === 0 && (
+            <p className="text-sm text-zinc-500">No teams available for your scope.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

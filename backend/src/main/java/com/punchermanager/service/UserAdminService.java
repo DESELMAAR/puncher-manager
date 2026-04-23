@@ -67,7 +67,7 @@ public class UserAdminService {
     if (actor.getRole() == UserRole.TEAM_LEADER) {
       validateTeamLeaderEmployeeUpsert(actor, req);
     } else {
-      assertCanManageUser(actor, req.getRole(), req.getDepartmentId());
+      assertCanManageUser(actor, req.getRole(), resolveDepartmentForAccessCheck(req));
     }
     if (req.getPassword() == null || req.getPassword().isBlank()) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "Password is required");
@@ -94,7 +94,7 @@ public class UserAdminService {
       assertTeamLeaderManagesEmployee(actor, existing);
       validateTeamLeaderEmployeeUpsert(actor, req);
     } else {
-      assertCanManageUser(actor, req.getRole(), req.getDepartmentId());
+      assertCanManageUser(actor, req.getRole(), resolveDepartmentForAccessCheck(req));
     }
     if (!existing.getEmail().equalsIgnoreCase(req.getEmail().trim())
         && userRepository.existsByEmail(req.getEmail().trim().toLowerCase())) {
@@ -180,6 +180,25 @@ public class UserAdminService {
       }
       default -> throw new ApiException(HttpStatus.FORBIDDEN, "Insufficient role");
     }
+  }
+
+  /**
+   * For department-scoped roles, the department is effectively determined by {@code teamId} when
+   * provided (because {@link #applyProfile} sets department from team). This helper makes access
+   * checks consistent with that behavior.
+   */
+  private UUID resolveDepartmentForAccessCheck(UserUpsertRequest req) {
+    if (req.getDepartmentId() != null) {
+      return req.getDepartmentId();
+    }
+    if (req.getTeamId() != null) {
+      Team t =
+          teamRepository
+              .findById(req.getTeamId())
+              .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Team not found"));
+      return t.getDepartment().getId();
+    }
+    return null;
   }
 
   private void applyProfile(User u, UserUpsertRequest req) {

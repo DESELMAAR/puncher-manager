@@ -152,13 +152,19 @@ export default function EmployeesAdminPage() {
 
   async function handleSubmit(form: EmployeeFormState) {
     try {
+      // For DEPT_MANAGER, ensure the request is explicitly scoped to their department to match
+      // backend access checks (even though department is also derived from teamId).
+      const body = buildUpsertBody(form, modalMode);
+      if (viewerRole === "DEPT_MANAGER" && authDeptId) {
+        body.departmentId = authDeptId;
+      }
       if (modalMode === "create") {
-        await api.post("/api/users", buildUpsertBody(form, "create"));
+        await api.post("/api/users", body);
         toast.success("Employee created", {
           description: `${form.name} can sign in with the email and password you set.`,
         });
       } else if (editing) {
-        await api.put(`/api/users/${editing.id}`, buildUpsertBody(form, "edit"));
+        await api.put(`/api/users/${editing.id}`, body);
         toast.success("Employee updated");
       }
       setModalOpen(false);

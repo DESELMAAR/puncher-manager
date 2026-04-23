@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import type { UserRole } from "@/lib/types";
@@ -48,6 +49,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { role, name, clear } = useAuthStore();
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const visible = links.filter((l) => role && l.roles.includes(role));
 
@@ -91,8 +93,37 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div
           className={`mx-auto p-6 ${pathname?.startsWith("/admin") ? "max-w-7xl" : "max-w-5xl"}`}
         >
-          <CompanyHeader />
-          {children}
+          <div className="mb-3 flex items-center justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                // Most pages fetch data in client effects; remount to refetch without browser reload.
+                setRefreshKey((k) => k + 1);
+                router.refresh();
+              }}
+              className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              title="Refresh"
+            >
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                <path d="M21 3v6h-6" />
+              </svg>
+              Refresh
+            </button>
+          </div>
+          <div key={refreshKey}>
+            <CompanyHeader />
+            {children}
+          </div>
         </div>
       </main>
     </div>

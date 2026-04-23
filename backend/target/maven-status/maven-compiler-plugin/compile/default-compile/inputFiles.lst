@@ -28,6 +28,8 @@ C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\w
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\LoginResponse.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\bootstrap\DataSeeder.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\security\JwtAuthenticationFilter.java
+C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\CompanySettingsUpsertRequest.java
+C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\CompanySettingsService.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\ScheduleConfirmationStatus.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\NotificationEntity.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\ScheduleRespondRequest.java
@@ -35,8 +37,11 @@ C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\w
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\AttendanceOverviewGroupDto.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\PlanningResponseDto.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\PunchType.java
+C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\repository\CompanySettingsRepository.java
+C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\controller\CompanySettingsController.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\UserAdminService.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\UserContextService.java
+C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\CompanySettingsDto.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\config\OpenApiConfig.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\NotificationDto.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\SseNotificationBroadcaster.java
@@ -59,6 +64,7 @@ C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\w
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\DepartmentResponse.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\repository\WeeklyScheduleRepository.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\Team.java
+C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\CompanySettings.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\PunchService.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\AttendanceService.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\JwtService.java

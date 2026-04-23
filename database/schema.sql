@@ -143,3 +143,16 @@ CREATE TABLE schedule_confirmations (
 
 CREATE INDEX idx_schedule_confirmations_employee ON schedule_confirmations (employee_user_id, updated_at DESC);
 CREATE INDEX idx_schedule_confirmations_status ON schedule_confirmations (status, updated_at DESC);
+
+-- Company settings (singleton-style)
+
+CREATE TABLE company_settings (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  company_name VARCHAR(255) NULL,
+  postal_address TEXT NULL,
+  department_label VARCHAR(255) NULL,
+  site_location VARCHAR(255) NULL,
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_company_settings_updated_at ON company_settings (updated_at DESC);

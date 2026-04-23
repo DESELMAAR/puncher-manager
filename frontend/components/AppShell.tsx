@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import type { UserRole } from "@/lib/types";
+import { CompanyHeader } from "@/components/company/CompanyHeader";
 
 const links: { href: string; label: string; roles: UserRole[] }[] = [
   { href: "/dashboard", label: "Dashboard", roles: ["SUPER_ADMIN", "ADMIN", "DEPT_MANAGER", "TEAM_LEADER", "EMPLOYEE"] },
@@ -35,6 +36,11 @@ const links: { href: string; label: string; roles: UserRole[] }[] = [
     href: "/admin/employees",
     label: "Employees",
     roles: ["SUPER_ADMIN", "ADMIN", "DEPT_MANAGER", "TEAM_LEADER"],
+  },
+  {
+    href: "/admin/settings",
+    label: "Settings",
+    roles: ["SUPER_ADMIN"],
   },
 ];
 
@@ -85,6 +91,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div
           className={`mx-auto p-6 ${pathname?.startsWith("/admin") ? "max-w-7xl" : "max-w-5xl"}`}
         >
+          <CompanyHeader />
           {children}
         </div>
       </main>

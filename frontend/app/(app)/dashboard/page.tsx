@@ -140,6 +140,11 @@ export default function DashboardPage() {
               Team attendance
             </Link>
           )}
+          {role === "SUPER_ADMIN" && (
+            <Link href="/admin/settings" className="rounded-lg border border-zinc-300 px-4 py-2 dark:border-zinc-600">
+              Settings
+            </Link>
+          )}
           <Link href="/notifications" className="rounded-lg border border-zinc-300 px-4 py-2 dark:border-zinc-600">
             Notifications
           </Link>

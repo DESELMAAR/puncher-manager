@@ -55,6 +55,15 @@ export interface AttendanceOverviewGroupDto {
   rows: AttendanceRow[];
 }
 
+export interface CompanySettingsDto {
+  id: string | null;
+  companyName: string | null;
+  postalAddress: string | null;
+  departmentLabel: string | null;
+  siteLocation: string | null;
+  updatedAt: string | null;
+}
+
 export interface NotificationDto {
   id: string;
   senderId: string;

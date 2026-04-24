@@ -42,9 +42,20 @@ public class AttendanceController {
   public List<AttendanceRowDto> teamDay(
       HttpServletRequest http,
       @PathVariable UUID teamId,
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
     User user = userContextService.requireCurrentUser(http);
     ZoneId zone = PunchService.resolveClientZone(http.getHeader("X-Client-Timezone"));
+    if (from != null || to != null) {
+      LocalDate f = from != null ? from : to;
+      LocalDate t = to != null ? to : from;
+      return attendanceService.teamAttendanceRange(teamId, f, t, user, zone);
+    }
+    if (date == null) {
+      throw new com.punchermanager.web.exception.ApiException(
+          org.springframework.http.HttpStatus.BAD_REQUEST, "date is required");
+    }
     return attendanceService.teamAttendance(teamId, date, user, zone);
   }
 
@@ -52,9 +63,20 @@ public class AttendanceController {
   @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','DEPT_MANAGER','TEAM_LEADER')")
   public List<AttendanceOverviewGroupDto> overview(
       HttpServletRequest http,
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
     User user = userContextService.requireCurrentUser(http);
     ZoneId zone = PunchService.resolveClientZone(http.getHeader("X-Client-Timezone"));
+    if (from != null || to != null) {
+      LocalDate f = from != null ? from : to;
+      LocalDate t = to != null ? to : from;
+      return attendanceService.overviewRange(f, t, user, zone);
+    }
+    if (date == null) {
+      throw new com.punchermanager.web.exception.ApiException(
+          org.springframework.http.HttpStatus.BAD_REQUEST, "date is required");
+    }
     return attendanceService.overview(date, user, zone);
   }
 

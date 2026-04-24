@@ -206,6 +206,95 @@ public class AttendanceService {
   }
 
   @Transactional(readOnly = true)
+  public List<AttendanceRowDto> teamAttendanceRange(
+      UUID teamId, LocalDate from, LocalDate to, User requester, ZoneId zone) {
+    if (from.isAfter(to)) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid date range");
+    }
+    long days = ChronoUnit.DAYS.between(from, to) + 1;
+    if (days > 62) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "Range too large (max 62 days)");
+    }
+
+    Team team =
+        teamRepository
+            .findByIdFetched(teamId)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Team not found"));
+    assertCanViewTeam(requester, team);
+
+    List<User> members = userRepository.findEmployeesByTeamId(teamId);
+    List<UUID> userIds = members.stream().map(User::getId).toList();
+    if (userIds.isEmpty()) {
+      return List.of();
+    }
+
+    Instant start = from.atStartOfDay(zone).toInstant();
+    Instant endExclusive = to.plusDays(1).atStartOfDay(zone).toInstant();
+    List<Punch> punches = punchRepository.findByUsersAndRange(userIds, start, endExclusive);
+    List<com.punchermanager.domain.AttendanceRecord> recs =
+        attendanceRecordRepository.findByUserIdsAndDateRange(userIds, from, to);
+
+    // Index records by (userId, date)
+    Map<String, com.punchermanager.domain.AttendanceRecord> recByKey = new LinkedHashMap<>();
+    for (var r : recs) {
+      recByKey.put(r.getUser().getId() + "|" + r.getRecordDate(), r);
+    }
+
+    // Index punches by (userId, localDate)
+    Map<String, List<PunchResponse>> punchesByKey = new LinkedHashMap<>();
+    for (Punch p : punches) {
+      LocalDate d = LocalDate.ofInstant(p.getPunchedAt(), zone);
+      if (d.isBefore(from) || d.isAfter(to)) continue;
+      String key = p.getUser().getId() + "|" + d;
+      punchesByKey
+          .computeIfAbsent(key, k -> new ArrayList<>())
+          .add(new PunchResponse(p.getId(), p.getPunchType(), p.getPunchedAt()));
+    }
+    for (List<PunchResponse> list : punchesByKey.values()) {
+      list.sort(Comparator.comparing(PunchResponse::punchedAt));
+    }
+
+    boolean scheduleVsPlanCheck =
+        requester.getRole() == UserRole.SUPER_ADMIN
+            || requester.getRole() == UserRole.ADMIN
+            || requester.getRole() == UserRole.DEPT_MANAGER
+            || requester.getRole() == UserRole.TEAM_LEADER;
+
+    List<AttendanceRowDto> out = new ArrayList<>();
+    for (LocalDate day = from; !day.isAfter(to); day = day.plusDays(1)) {
+      for (User u : members) {
+        String key = u.getId() + "|" + day;
+        var att = recByKey.get(key);
+        List<PunchResponse> punchDtos = punchesByKey.getOrDefault(key, List.of());
+
+        Boolean scheduleOk = null;
+        String scheduleNote = null;
+        if (scheduleVsPlanCheck) {
+          ScheduleVsPlanResult check =
+              verifyScheduleVsPunches(u.getEmployeeId(), day, punchDtos, zone);
+          scheduleOk = check.ok();
+          scheduleNote = check.note();
+        }
+
+        out.add(
+            new AttendanceRowDto(
+                u.getId(),
+                u.getName(),
+                u.getEmployeeId(),
+                day,
+                att != null ? att.getStatus() : null,
+                att != null ? att.getExpectedStart() : null,
+                att != null ? att.getActualStart() : null,
+                att != null ? att.getMinutesLate() : null,
+                punchDtos,
+                scheduleOk,
+                scheduleNote));
+      }
+    }
+    return out;
+  }
+
+  @Transactional(readOnly = true)
   public List<AttendanceOverviewGroupDto> overview(LocalDate date, User requester, ZoneId zone) {
     List<Team> teamsInScope = resolveTeamsInScope(requester);
     Map<UUID, Team> byId = new LinkedHashMap<>();
@@ -216,6 +305,25 @@ public class AttendanceService {
     List<AttendanceOverviewGroupDto> out = new ArrayList<>();
     for (Team t : byId.values()) {
       List<AttendanceRowDto> rows = teamAttendance(t.getId(), date, requester, zone);
+      out.add(
+          new AttendanceOverviewGroupDto(
+              t.getDepartment().getId(), t.getDepartment().getName(), t.getId(), t.getName(), rows));
+    }
+    return out;
+  }
+
+  @Transactional(readOnly = true)
+  public List<AttendanceOverviewGroupDto> overviewRange(
+      LocalDate from, LocalDate to, User requester, ZoneId zone) {
+    List<Team> teamsInScope = resolveTeamsInScope(requester);
+    Map<UUID, Team> byId = new LinkedHashMap<>();
+    for (Team t : teamsInScope) {
+      byId.put(t.getId(), t);
+    }
+
+    List<AttendanceOverviewGroupDto> out = new ArrayList<>();
+    for (Team t : byId.values()) {
+      List<AttendanceRowDto> rows = teamAttendanceRange(t.getId(), from, to, requester, zone);
       out.add(
           new AttendanceOverviewGroupDto(
               t.getDepartment().getId(), t.getDepartment().getName(), t.getId(), t.getName(), rows));
@@ -310,22 +418,10 @@ public class AttendanceService {
     }
 
     if (lastLogout == null) {
-      LocalDate today = LocalDate.now(zone);
-      Instant scheduledEnd = expectedEnd.atDate(date).atZone(zone).toInstant();
-      Instant now = Instant.now();
-      // If the shift hasn't ended yet (today) or is in the future, don't flag missing LOGOUT.
-      if (date.isAfter(today) || (date.equals(today) && now.isBefore(scheduledEnd))) {
-        return new ScheduleVsPlanResult(
-            true,
-            "In progress (scheduled shift "
-                + shiftWindow
-                + ", end "
-                + fmtTime(expectedEnd)
-                + ")");
-      }
+      // Never flag missing end-shift until the employee logs out.
       return new ScheduleVsPlanResult(
-          false,
-          "Missing LOGOUT (scheduled shift " + shiftWindow + ", end " + fmtTime(expectedEnd) + ")");
+          true,
+          "No LOGOUT yet (scheduled shift " + shiftWindow + ", end " + fmtTime(expectedEnd) + ")");
     }
 
     long minutesEarlyVsEnd =

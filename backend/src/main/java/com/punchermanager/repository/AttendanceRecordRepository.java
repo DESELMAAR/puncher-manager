@@ -17,4 +17,11 @@ public interface AttendanceRecordRepository extends JpaRepository<AttendanceReco
       "select a from AttendanceRecord a where a.user.id in :userIds and a.recordDate = :date")
   List<AttendanceRecord> findByUserIdsAndDate(
       @Param("userIds") List<UUID> userIds, @Param("date") LocalDate date);
+
+  @Query(
+      "select a from AttendanceRecord a where a.user.id in :userIds and a.recordDate >= :from and a.recordDate <= :to")
+  List<AttendanceRecord> findByUserIdsAndDateRange(
+      @Param("userIds") List<UUID> userIds,
+      @Param("from") LocalDate from,
+      @Param("to") LocalDate to);
 }

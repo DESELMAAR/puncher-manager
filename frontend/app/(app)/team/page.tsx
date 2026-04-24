@@ -38,6 +38,14 @@ export default function TeamPage() {
   const [teams, setTeams] = useState<{ id: string; name: string }[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [date, setDate] = useState(() => localDateISO());
+  const [rangeMode, setRangeMode] = useState(false);
+  const [from, setFrom] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return localDateISO(d);
+  });
+  const [to, setTo] = useState(() => localDateISO());
+  const [query, setQuery] = useState("");
   const [rows, setRows] = useState<AttendanceRow[]>([]);
   const [overviewMode, setOverviewMode] = useState(false);
   const [overview, setOverview] = useState<AttendanceOverviewGroupDto[]>([]);
@@ -141,22 +149,26 @@ export default function TeamPage() {
     if (overviewMode) return;
     if (!selectedTeam) return;
     void (async () => {
-      const { data } = await api.get<AttendanceRow[]>(`/api/attendance/team/${selectedTeam}`, {
-        params: { date },
-      });
+      const params = rangeMode ? { from, to } : { date };
+      const { data } = await api.get<AttendanceRow[]>(
+        `/api/attendance/team/${selectedTeam}`,
+        { params },
+      );
       setRows(data);
     })();
-  }, [overviewMode, selectedTeam, date]);
+  }, [overviewMode, selectedTeam, rangeMode, date, from, to]);
 
   useEffect(() => {
     if (!overviewMode) return;
     void (async () => {
-      const { data } = await api.get<AttendanceOverviewGroupDto[]>(`/api/attendance/overview`, {
-        params: { date },
-      });
+      const params = rangeMode ? { from, to } : { date };
+      const { data } = await api.get<AttendanceOverviewGroupDto[]>(
+        `/api/attendance/overview`,
+        { params },
+      );
       setOverview(data);
     })();
-  }, [overviewMode, date]);
+  }, [overviewMode, rangeMode, date, from, to]);
 
   function exportCsv() {
     if (overviewMode) return;
@@ -182,7 +194,27 @@ export default function TeamPage() {
   const showDepartmentPicker =
     role === "SUPER_ADMIN" || role === "ADMIN" ? departments.length > 0 : false;
 
-  const grouped = useMemo(() => overview, [overview]);
+  const q = query.trim().toLowerCase();
+  const matches = useCallback(
+    (r: AttendanceRow) => {
+      if (!q) return true;
+      const name = (r.name ?? "").toLowerCase();
+      const empId = (r.employeeId ?? "").toLowerCase();
+      // Email isn't currently included in AttendanceRow; keep this ready if you add it later.
+      const email = ((r as unknown as { email?: string }).email ?? "").toLowerCase();
+      return name.includes(q) || empId.includes(q) || email.includes(q);
+    },
+    [q],
+  );
+
+  const filteredRows = useMemo(() => rows.filter(matches), [rows, matches]);
+
+  const grouped = useMemo(() => {
+    if (!q) return overview;
+    return overview
+      .map((g) => ({ ...g, rows: g.rows.filter(matches) }))
+      .filter((g) => g.rows.length > 0);
+  }, [overview, matches, q]);
 
   return (
     <div className="space-y-4">
@@ -252,13 +284,43 @@ export default function TeamPage() {
           Overview (all teams)
         </label>
         <label className="text-sm">
-          Date{" "}
           <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600 dark:bg-zinc-800"
+            type="checkbox"
+            className="mr-2 align-middle"
+            checked={rangeMode}
+            onChange={(e) => setRangeMode(e.target.checked)}
           />
+          Range (up to 2 months)
+        </label>
+        <label className="text-sm">
+          {rangeMode ? (
+            <span className="inline-flex flex-wrap items-center gap-2">
+              <span>From</span>
+              <input
+                type="date"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+                className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600 dark:bg-zinc-800"
+              />
+              <span>To</span>
+              <input
+                type="date"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600 dark:bg-zinc-800"
+              />
+            </span>
+          ) : (
+            <>
+              Date{" "}
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600 dark:bg-zinc-800"
+              />
+            </>
+          )}
         </label>
         <button
           type="button"
@@ -270,11 +332,33 @@ export default function TeamPage() {
         </button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="text-sm">
+          Search{" "}
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Employee ID or name or email"
+            className="ml-1 w-72 max-w-full rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600 dark:bg-zinc-800"
+          />
+        </label>
+        {query.trim() && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            className="rounded-lg border border-zinc-300 px-3 py-1 text-sm dark:border-zinc-600"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
       {!overviewMode && (
         <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-zinc-100 dark:bg-zinc-900">
               <tr>
+                {rangeMode && <th className="p-2">Date</th>}
                 <th className="p-2">Employee</th>
                 <th className="p-2">Status</th>
                 {showScheduleVsPlan && (
@@ -286,8 +370,9 @@ export default function TeamPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {filteredRows.map((r) => (
                 <tr key={r.userId} className="border-t border-zinc-200 dark:border-zinc-800">
+                  {rangeMode && <td className="p-2 font-mono text-xs">{r.recordDate}</td>}
                   <td className="p-2">
                     {r.name}
                     <div className="font-mono text-xs text-zinc-500">{r.employeeId}</div>
@@ -319,6 +404,16 @@ export default function TeamPage() {
                   </td>
                 </tr>
               ))}
+              {filteredRows.length === 0 && (
+                <tr>
+                  <td
+                    className="p-3 text-sm text-zinc-500"
+                    colSpan={rangeMode ? 5 : 4}
+                  >
+                    No matching employees.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -342,6 +437,7 @@ export default function TeamPage() {
               <table className="min-w-full text-left text-sm">
                 <thead>
                   <tr className="border-t border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+                    {rangeMode && <th className="p-2">Date</th>}
                     <th className="p-2">Employee</th>
                     <th className="p-2">Status</th>
                     {showScheduleVsPlan && <th className="p-2">Schedule</th>}
@@ -351,6 +447,7 @@ export default function TeamPage() {
                 <tbody>
                   {g.rows.map((r) => (
                     <tr key={r.userId} className="border-t border-zinc-200 dark:border-zinc-800">
+                      {rangeMode && <td className="p-2 font-mono text-xs">{r.recordDate}</td>}
                       <td className="p-2">
                         {r.name}
                         <div className="font-mono text-xs text-zinc-500">{r.employeeId}</div>

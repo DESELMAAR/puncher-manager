@@ -35,12 +35,12 @@ function dayColorClass(isoDate: string) {
   let h = 0;
   for (let i = 0; i < isoDate.length; i++) h = (h * 31 + isoDate.charCodeAt(i)) >>> 0;
   const palette = [
-    "bg-sky-50/70 dark:bg-sky-950/25",
-    "bg-emerald-50/70 dark:bg-emerald-950/25",
-    "bg-amber-50/70 dark:bg-amber-950/25",
-    "bg-violet-50/70 dark:bg-violet-950/25",
-    "bg-rose-50/70 dark:bg-rose-950/25",
-    "bg-teal-50/70 dark:bg-teal-950/25",
+    "bg-sky-100/80 dark:bg-sky-900/35",
+    "bg-emerald-100/80 dark:bg-emerald-900/35",
+    "bg-amber-100/80 dark:bg-amber-900/35",
+    "bg-violet-100/80 dark:bg-violet-900/35",
+    "bg-rose-100/80 dark:bg-rose-900/35",
+    "bg-teal-100/80 dark:bg-teal-900/35",
   ];
   return palette[h % palette.length]!;
 }

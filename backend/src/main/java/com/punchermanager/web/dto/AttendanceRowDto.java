@@ -10,6 +10,8 @@ public record AttendanceRowDto(
     UUID userId,
     String name,
     String employeeId,
+    String departmentName,
+    String teamName,
     LocalDate recordDate,
     AttendanceStatus status,
     LocalTime expectedStart,

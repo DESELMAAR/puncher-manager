@@ -71,11 +71,8 @@ export default function DashboardPage() {
         const { data: deps } = await api.get<DepartmentDto[]>("/api/departments");
         const dept = departmentId ? deps.find((d) => d.id === departmentId) : null;
         setDeptName(dept?.name ?? null);
-        if (departmentId) {
-          const { data: teams } = await api.get<TeamDto[]>(
-            `/api/teams/department/${departmentId}`,
-          );
-          const t = teamId ? teams.find((x) => x.id === teamId) : null;
+        if (teamId) {
+          const { data: t } = await api.get<TeamDto>("/api/teams/my");
           setTeamName(t?.name ?? null);
         } else {
           setTeamName(null);

@@ -39,6 +39,13 @@ public class TeamController {
     return teamService.listByDepartment(actor, departmentId);
   }
 
+  @GetMapping("/my")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','DEPT_MANAGER','TEAM_LEADER','EMPLOYEE')")
+  public TeamResponse myTeam(HttpServletRequest http) {
+    User actor = userContextService.requireCurrentUser(http);
+    return teamService.myTeam(actor);
+  }
+
   @PostMapping
   @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','DEPT_MANAGER')")
   public TeamResponse create(HttpServletRequest http, @Valid @RequestBody TeamRequest body) {

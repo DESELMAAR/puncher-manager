@@ -40,6 +40,24 @@ public class TeamService {
         .toList();
   }
 
+  @Transactional(readOnly = true)
+  public TeamResponse myTeam(User actor) {
+    if (actor.getTeam() == null) {
+      throw new ApiException(HttpStatus.NOT_FOUND, "No team assigned");
+    }
+    Team t =
+        teamRepository
+            .findByIdFetched(actor.getTeam().getId())
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Team not found"));
+    // Any authenticated user can fetch their own team.
+    if (actor.getRole() == UserRole.EMPLOYEE || actor.getRole() == UserRole.TEAM_LEADER) {
+      if (!t.getId().equals(actor.getTeam().getId())) {
+        throw new ApiException(HttpStatus.FORBIDDEN, "Outside your team scope");
+      }
+    }
+    return toResponse(t);
+  }
+
   @Transactional
   public TeamResponse create(User actor, TeamRequest req) {
     assertDepartmentAccess(actor, req.getDepartmentId());

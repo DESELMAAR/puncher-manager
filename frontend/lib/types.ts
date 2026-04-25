@@ -36,6 +36,8 @@ export interface AttendanceRow {
   userId: string;
   name: string;
   employeeId: string;
+  departmentName?: string | null;
+  teamName?: string | null;
   recordDate: string;
   status: "ON_TIME" | "LATE" | "ABSENT" | null;
   expectedStart: string | null;

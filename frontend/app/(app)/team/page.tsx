@@ -416,6 +416,11 @@ export default function TeamPage() {
                   <td className="p-2">
                     {r.name}
                     <div className="font-mono text-xs text-zinc-500">{r.employeeId}</div>
+                    {(r.departmentName || r.teamName) && (
+                      <div className="text-xs text-zinc-500">
+                        {r.departmentName ?? "—"} {" · "} {r.teamName ?? "—"}
+                      </div>
+                    )}
                   </td>
                   <td className="p-2">{r.status ?? "—"}</td>
                   {showScheduleVsPlan && (
@@ -500,6 +505,11 @@ export default function TeamPage() {
                       <td className="p-2">
                         {r.name}
                         <div className="font-mono text-xs text-zinc-500">{r.employeeId}</div>
+                        {(r.departmentName || r.teamName) && (
+                          <div className="text-xs text-zinc-500">
+                            {r.departmentName ?? "—"} {" · "} {r.teamName ?? "—"}
+                          </div>
+                        )}
                       </td>
                       <td className="p-2">{r.status ?? "—"}</td>
                       {showScheduleVsPlan && (

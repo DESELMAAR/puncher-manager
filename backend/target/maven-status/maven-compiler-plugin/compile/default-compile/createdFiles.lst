@@ -65,6 +65,7 @@ com\punchermanager\repository\TeamRepository.class
 com\punchermanager\domain\User.class
 com\punchermanager\domain\ScheduleConfirmation.class
 com\punchermanager\web\dto\NotificationDto.class
+com\punchermanager\service\AttendanceService$DerivedAttendance.class
 com\punchermanager\bootstrap\DataSeeder.class
 com\punchermanager\service\AttendanceService$ScheduleVsPlanResult.class
 com\punchermanager\service\ScheduleService.class

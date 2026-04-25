@@ -179,6 +179,9 @@ public class AttendanceService {
               .sorted(Comparator.comparing(PunchResponse::punchedAt))
               .toList();
 
+      DerivedAttendance derived =
+          att == null ? deriveFromPunchesIfPossible(u.getEmployeeId(), date, punchDtos, zone) : null;
+
       Boolean scheduleOk = null;
       String scheduleNote = null;
       if (scheduleVsPlanCheck) {
@@ -196,10 +199,10 @@ public class AttendanceService {
               u.getDepartment() != null ? u.getDepartment().getName() : null,
               u.getTeam() != null ? u.getTeam().getName() : null,
               date,
-              att != null ? att.getStatus() : null,
-              att != null ? att.getExpectedStart() : null,
-              att != null ? att.getActualStart() : null,
-              att != null ? att.getMinutesLate() : null,
+              att != null ? att.getStatus() : (derived != null ? derived.status() : null),
+              att != null ? att.getExpectedStart() : (derived != null ? derived.expectedStart() : null),
+              att != null ? att.getActualStart() : (derived != null ? derived.actualStart() : null),
+              att != null ? att.getMinutesLate() : (derived != null ? derived.minutesLate() : null),
               punchDtos,
               scheduleOk,
               scheduleNote));
@@ -269,6 +272,9 @@ public class AttendanceService {
         var att = recByKey.get(key);
         List<PunchResponse> punchDtos = punchesByKey.getOrDefault(key, List.of());
 
+        DerivedAttendance derived =
+            att == null ? deriveFromPunchesIfPossible(u.getEmployeeId(), day, punchDtos, zone) : null;
+
         Boolean scheduleOk = null;
         String scheduleNote = null;
         if (scheduleVsPlanCheck) {
@@ -286,16 +292,47 @@ public class AttendanceService {
                 u.getDepartment() != null ? u.getDepartment().getName() : null,
                 u.getTeam() != null ? u.getTeam().getName() : null,
                 day,
-                att != null ? att.getStatus() : null,
-                att != null ? att.getExpectedStart() : null,
-                att != null ? att.getActualStart() : null,
-                att != null ? att.getMinutesLate() : null,
+                att != null ? att.getStatus() : (derived != null ? derived.status() : null),
+                att != null ? att.getExpectedStart() : (derived != null ? derived.expectedStart() : null),
+                att != null ? att.getActualStart() : (derived != null ? derived.actualStart() : null),
+                att != null ? att.getMinutesLate() : (derived != null ? derived.minutesLate() : null),
                 punchDtos,
                 scheduleOk,
                 scheduleNote));
       }
     }
     return out;
+  }
+
+  private record DerivedAttendance(
+      AttendanceStatus status, LocalTime expectedStart, LocalTime actualStart, Integer minutesLate) {}
+
+  /**
+   * For in-progress days (no LOGOUT yet) we still want a meaningful status:
+   * - ON_TIME if first WORK_START is at/before scheduled start
+   * - LATE if first WORK_START is after scheduled start
+   */
+  private DerivedAttendance deriveFromPunchesIfPossible(
+      String employeeId, LocalDate date, List<PunchResponse> sortedPunches, ZoneId zone) {
+    if (sortedPunches == null || sortedPunches.isEmpty()) return null;
+    var planOpt = planningService.getPlannedDay(employeeId, date);
+    if (planOpt.isEmpty()) return null;
+    PlanningResponseDto plan = planOpt.get();
+    LocalTime expectedStart = plan.expectedStartTime();
+
+    PunchResponse firstWorkStart =
+        sortedPunches.stream().filter(p -> p.type() == PunchType.WORK_START).findFirst().orElse(null);
+    if (firstWorkStart == null) return null;
+
+    LocalTime actualStart = LocalTime.ofInstant(firstWorkStart.punchedAt(), zone);
+    Instant scheduledStart = expectedStart.atDate(date).atZone(zone).toInstant();
+    long minutesDiff = ChronoUnit.MINUTES.between(scheduledStart, firstWorkStart.punchedAt());
+    boolean late = minutesDiff > 0;
+    return new DerivedAttendance(
+        late ? AttendanceStatus.LATE : AttendanceStatus.ON_TIME,
+        expectedStart,
+        actualStart,
+        late ? (int) Math.max(0L, minutesDiff) : 0);
   }
 
   @Transactional(readOnly = true)

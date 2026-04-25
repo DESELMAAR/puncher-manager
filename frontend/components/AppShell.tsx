@@ -6,6 +6,25 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import type { UserRole } from "@/lib/types";
 import { CompanyHeader } from "@/components/company/CompanyHeader";
+import { useUiStore, type BackgroundTheme } from "@/store/uiStore";
+
+function backgroundClass(t: BackgroundTheme) {
+  switch (t) {
+    case "ROSE":
+      return "bg-rose-50 dark:bg-rose-950/40";
+    case "OCEAN":
+      return "bg-sky-50 dark:bg-sky-950/40";
+    case "FOREST":
+      return "bg-emerald-50 dark:bg-emerald-950/35";
+    case "SUNSET":
+      return "bg-amber-50 dark:bg-amber-950/35";
+    case "VIOLET":
+      return "bg-violet-50 dark:bg-violet-950/35";
+    case "DEFAULT":
+    default:
+      return "bg-zinc-50 dark:bg-zinc-950";
+  }
+}
 
 const links: { href: string; label: string; roles: UserRole[] }[] = [
   { href: "/dashboard", label: "Dashboard", roles: ["SUPER_ADMIN", "ADMIN", "DEPT_MANAGER", "TEAM_LEADER", "EMPLOYEE"] },
@@ -50,16 +69,35 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { role, name, clear } = useAuthStore();
   const [refreshKey, setRefreshKey] = useState(0);
+  const backgroundTheme = useUiStore((s) => s.backgroundTheme);
+  const setBackgroundTheme = useUiStore((s) => s.setBackgroundTheme);
 
   const visible = links.filter((l) => role && l.roles.includes(role));
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div
+      className={`min-h-screen text-zinc-900 dark:text-zinc-100 ${backgroundClass(backgroundTheme)}`}
+    >
       <aside className="fixed inset-y-0 left-0 w-56 border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div className="border-b border-zinc-200 px-4 py-4 dark:border-zinc-800">
           <div className="text-lg font-semibold">Puncher Manager</div>
           <div className="truncate text-xs text-zinc-500">{name}</div>
           <div className="text-xs text-zinc-400">{role}</div>
+          <div className="mt-3">
+            <label className="text-[11px] font-medium text-zinc-500">Background</label>
+            <select
+              value={backgroundTheme}
+              onChange={(e) => setBackgroundTheme(e.target.value as BackgroundTheme)}
+              className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
+            >
+              <option value="DEFAULT">Default</option>
+              <option value="ROSE">Rose</option>
+              <option value="OCEAN">Ocean</option>
+              <option value="FOREST">Forest</option>
+              <option value="SUNSET">Sunset</option>
+              <option value="VIOLET">Violet</option>
+            </select>
+          </div>
         </div>
         <nav className="flex flex-col gap-1 p-2">
           {visible.map((l) => (

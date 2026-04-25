@@ -70,7 +70,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { role, name, clear } = useAuthStore();
   const [refreshKey, setRefreshKey] = useState(0);
   const backgroundTheme = useUiStore((s) => s.backgroundTheme);
-  const setBackgroundTheme = useUiStore((s) => s.setBackgroundTheme);
 
   const visible = links.filter((l) => role && l.roles.includes(role));
 
@@ -83,21 +82,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="text-lg font-semibold">Puncher Manager</div>
           <div className="truncate text-xs text-zinc-500">{name}</div>
           <div className="text-xs text-zinc-400">{role}</div>
-          <div className="mt-3">
-            <label className="text-[11px] font-medium text-zinc-500">Background</label>
-            <select
-              value={backgroundTheme}
-              onChange={(e) => setBackgroundTheme(e.target.value as BackgroundTheme)}
-              className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
-            >
-              <option value="DEFAULT">Default</option>
-              <option value="ROSE">Rose</option>
-              <option value="OCEAN">Ocean</option>
-              <option value="FOREST">Forest</option>
-              <option value="SUNSET">Sunset</option>
-              <option value="VIOLET">Violet</option>
-            </select>
-          </div>
         </div>
         <nav className="flex flex-col gap-1 p-2">
           {visible.map((l) => (

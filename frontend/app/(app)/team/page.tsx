@@ -45,6 +45,21 @@ function dayColorClass(isoDate: string) {
   return palette[h % palette.length]!;
 }
 
+function teamAccentClass(teamId: string) {
+  // Stable team accent colors for overview cards.
+  let h = 0;
+  for (let i = 0; i < teamId.length; i++) h = (h * 31 + teamId.charCodeAt(i)) >>> 0;
+  const palette = [
+    "border-sky-300/70 bg-sky-50/60 dark:border-sky-700/70 dark:bg-sky-950/25",
+    "border-emerald-300/70 bg-emerald-50/60 dark:border-emerald-700/70 dark:bg-emerald-950/25",
+    "border-amber-300/70 bg-amber-50/60 dark:border-amber-700/70 dark:bg-amber-950/25",
+    "border-violet-300/70 bg-violet-50/60 dark:border-violet-700/70 dark:bg-violet-950/25",
+    "border-rose-300/70 bg-rose-50/60 dark:border-rose-700/70 dark:bg-rose-950/25",
+    "border-teal-300/70 bg-teal-50/60 dark:border-teal-700/70 dark:bg-teal-950/25",
+  ];
+  return palette[h % palette.length]!;
+}
+
 export default function TeamPage() {
   const { teamId, departmentId, role } = useAuthStore();
   const showScheduleVsPlan = canSeeScheduleVsPlan(role);
@@ -449,9 +464,9 @@ export default function TeamPage() {
           {grouped.map((g) => (
             <div
               key={g.teamId}
-              className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800"
+              className={`overflow-x-auto rounded-lg border ${teamAccentClass(g.teamId)}`}
             >
-              <div className="flex flex-wrap items-baseline justify-between gap-2 bg-zinc-100 px-3 py-2 dark:bg-zinc-900">
+              <div className="flex flex-wrap items-baseline justify-between gap-2 bg-white/40 px-3 py-2 dark:bg-black/10">
                 <div className="font-medium">
                   {g.departmentName} / {g.teamName}
                 </div>
@@ -461,7 +476,7 @@ export default function TeamPage() {
               </div>
               <table className="min-w-full text-left text-sm">
                 <thead>
-                  <tr className="border-t border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+                  <tr className="border-t border-zinc-200 bg-white/70 dark:border-zinc-800 dark:bg-zinc-950/60">
                     {rangeMode && <th className="p-2">Date</th>}
                     <th className="p-2">Employee</th>
                     <th className="p-2">Status</th>

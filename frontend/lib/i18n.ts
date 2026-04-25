@@ -25,7 +25,30 @@ export type I18nKey =
   | "theme.bg.violet"
   | "lang.english"
   | "lang.french"
-  | "lang.spanish";
+  | "lang.spanish"
+  | "team.title"
+  | "team.scopePrefix"
+  | "team.scope.superAdmin"
+  | "team.scope.admin"
+  | "team.scope.deptManager"
+  | "team.scope.teamLeader"
+  | "label.department"
+  | "label.team"
+  | "label.date"
+  | "label.from"
+  | "label.to"
+  | "label.search"
+  | "action.clear"
+  | "action.exportCsv"
+  | "attendance.overview"
+  | "attendance.range"
+  | "attendance.noTeams"
+  | "attendance.noMatches"
+  | "table.date"
+  | "table.employee"
+  | "table.status"
+  | "table.schedule"
+  | "table.punches";
 
 const dict: Record<Language, Record<I18nKey, string>> = {
   en: {
@@ -54,6 +77,29 @@ const dict: Record<Language, Record<I18nKey, string>> = {
     "lang.english": "English",
     "lang.french": "Français",
     "lang.spanish": "Español",
+    "team.title": "Team attendance",
+    "team.scopePrefix": "View employee attendance by scope:",
+    "team.scope.superAdmin": "All departments (select below)",
+    "team.scope.admin": "Departments you manage (select below)",
+    "team.scope.deptManager": "Your department’s teams",
+    "team.scope.teamLeader": "Your team only",
+    "label.department": "Department",
+    "label.team": "Team",
+    "label.date": "Date",
+    "label.from": "From",
+    "label.to": "To",
+    "label.search": "Search",
+    "action.clear": "Clear",
+    "action.exportCsv": "Export CSV",
+    "attendance.overview": "Overview (all teams)",
+    "attendance.range": "Range (up to 2 months)",
+    "attendance.noTeams": "No teams available for your scope.",
+    "attendance.noMatches": "No matching employees.",
+    "table.date": "Date",
+    "table.employee": "Employee",
+    "table.status": "Status",
+    "table.schedule": "Schedule",
+    "table.punches": "Punches",
   },
   fr: {
     "nav.dashboard": "Tableau de bord",
@@ -81,6 +127,29 @@ const dict: Record<Language, Record<I18nKey, string>> = {
     "lang.english": "English",
     "lang.french": "Français",
     "lang.spanish": "Español",
+    "team.title": "Présences équipe",
+    "team.scopePrefix": "Voir les présences selon votre périmètre :",
+    "team.scope.superAdmin": "Tous les départements (sélectionner ci-dessous)",
+    "team.scope.admin": "Départements que vous gérez (sélectionner ci-dessous)",
+    "team.scope.deptManager": "Équipes de votre département",
+    "team.scope.teamLeader": "Votre équipe uniquement",
+    "label.department": "Département",
+    "label.team": "Équipe",
+    "label.date": "Date",
+    "label.from": "Du",
+    "label.to": "Au",
+    "label.search": "Rechercher",
+    "action.clear": "Effacer",
+    "action.exportCsv": "Exporter CSV",
+    "attendance.overview": "Vue d’ensemble (toutes les équipes)",
+    "attendance.range": "Période (jusqu’à 2 mois)",
+    "attendance.noTeams": "Aucune équipe disponible dans votre périmètre.",
+    "attendance.noMatches": "Aucun employé correspondant.",
+    "table.date": "Date",
+    "table.employee": "Employé",
+    "table.status": "Statut",
+    "table.schedule": "Planning",
+    "table.punches": "Pointages",
   },
   es: {
     "nav.dashboard": "Panel",
@@ -108,6 +177,29 @@ const dict: Record<Language, Record<I18nKey, string>> = {
     "lang.english": "English",
     "lang.french": "Français",
     "lang.spanish": "Español",
+    "team.title": "Asistencia del equipo",
+    "team.scopePrefix": "Ver asistencia por alcance:",
+    "team.scope.superAdmin": "Todos los departamentos (seleccionar abajo)",
+    "team.scope.admin": "Departamentos que gestionas (seleccionar abajo)",
+    "team.scope.deptManager": "Equipos de tu departamento",
+    "team.scope.teamLeader": "Solo tu equipo",
+    "label.department": "Departamento",
+    "label.team": "Equipo",
+    "label.date": "Fecha",
+    "label.from": "Desde",
+    "label.to": "Hasta",
+    "label.search": "Buscar",
+    "action.clear": "Limpiar",
+    "action.exportCsv": "Exportar CSV",
+    "attendance.overview": "Resumen (todos los equipos)",
+    "attendance.range": "Rango (hasta 2 meses)",
+    "attendance.noTeams": "No hay equipos disponibles en tu alcance.",
+    "attendance.noMatches": "No hay empleados coincidentes.",
+    "table.date": "Fecha",
+    "table.employee": "Empleado",
+    "table.status": "Estado",
+    "table.schedule": "Horario",
+    "table.punches": "Marcajes",
   },
 };
 

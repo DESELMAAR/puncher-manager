@@ -10,6 +10,7 @@ import type {
 } from "@/lib/types";
 import { useAuthStore } from "@/store/authStore";
 import { localDateISO } from "@/lib/dateUtils";
+import { useT } from "@/lib/useT";
 
 function clientTimeZone(): string | undefined {
   try {
@@ -61,6 +62,7 @@ function teamAccentClass(teamId: string) {
 }
 
 export default function TeamPage() {
+  const t = useT();
   const { teamId, departmentId, role } = useAuthStore();
   const showScheduleVsPlan = canSeeScheduleVsPlan(role);
 
@@ -249,20 +251,20 @@ export default function TeamPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Team attendance</h1>
+      <h1 className="text-2xl font-bold">{t("team.title")}</h1>
       <p className="text-sm text-zinc-500">
-        View employee attendance by scope:{" "}
+        {t("team.scopePrefix")}{" "}
         <strong className="text-zinc-700 dark:text-zinc-300">
-          {role === "SUPER_ADMIN" && "All departments (select below)"}
-          {role === "ADMIN" && "Departments you manage (select below)"}
-          {role === "DEPT_MANAGER" && "Your department’s teams"}
-          {role === "TEAM_LEADER" && "Your team only"}
+          {role === "SUPER_ADMIN" && t("team.scope.superAdmin")}
+          {role === "ADMIN" && t("team.scope.admin")}
+          {role === "DEPT_MANAGER" && t("team.scope.deptManager")}
+          {role === "TEAM_LEADER" && t("team.scope.teamLeader")}
         </strong>
       </p>
 
       {showDepartmentPicker && (
         <label className="text-sm">
-          Department{" "}
+          {t("label.department")}{" "}
           <select
             value={selectedDeptId ?? ""}
             onChange={(e) => void onDepartmentChange(e.target.value)}
@@ -279,7 +281,7 @@ export default function TeamPage() {
 
       {teams.length > 1 && (
         <label className="text-sm">
-          Team{" "}
+          {t("label.team")}{" "}
           <select
             value={selectedTeam ?? ""}
             onChange={(e) => setSelectedTeam(e.target.value)}
@@ -296,12 +298,12 @@ export default function TeamPage() {
 
       {teams.length === 1 && role !== "TEAM_LEADER" && (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Team: <span className="font-medium">{teams[0]?.name}</span>
+          {t("label.team")}: <span className="font-medium">{teams[0]?.name}</span>
         </p>
       )}
 
       {teams.length === 0 && (
-        <p className="text-sm text-zinc-500">No teams available for your scope.</p>
+        <p className="text-sm text-zinc-500">{t("attendance.noTeams")}</p>
       )}
 
       <div className="flex flex-wrap items-center gap-3">
@@ -312,7 +314,7 @@ export default function TeamPage() {
             checked={overviewMode}
             onChange={(e) => setOverviewMode(e.target.checked)}
           />
-          Overview (all teams)
+          {t("attendance.overview")}
         </label>
         <label className="text-sm">
           <input
@@ -321,19 +323,19 @@ export default function TeamPage() {
             checked={rangeMode}
             onChange={(e) => setRangeMode(e.target.checked)}
           />
-          Range (up to 2 months)
+          {t("attendance.range")}
         </label>
         <label className="text-sm">
           {rangeMode ? (
             <span className="inline-flex flex-wrap items-center gap-2">
-              <span>From</span>
+              <span>{t("label.from")}</span>
               <input
                 type="date"
                 value={from}
                 onChange={(e) => setFrom(e.target.value)}
                 className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600 dark:bg-zinc-800"
               />
-              <span>To</span>
+              <span>{t("label.to")}</span>
               <input
                 type="date"
                 value={to}
@@ -343,7 +345,7 @@ export default function TeamPage() {
             </span>
           ) : (
             <>
-              Date{" "}
+              {t("label.date")}{" "}
               <input
                 type="date"
                 value={date}
@@ -359,13 +361,13 @@ export default function TeamPage() {
           disabled={overviewMode || !selectedTeam}
           className="rounded-lg border border-zinc-300 px-3 py-1 text-sm dark:border-zinc-600"
         >
-          Export CSV
+          {t("action.exportCsv")}
         </button>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <label className="text-sm">
-          Search{" "}
+          {t("label.search")}{" "}
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -379,7 +381,7 @@ export default function TeamPage() {
             onClick={() => setQuery("")}
             className="rounded-lg border border-zinc-300 px-3 py-1 text-sm dark:border-zinc-600"
           >
-            Clear
+            {t("action.clear")}
           </button>
         )}
       </div>
@@ -389,15 +391,15 @@ export default function TeamPage() {
           <table className="min-w-full text-left text-sm">
             <thead className="bg-zinc-100 dark:bg-zinc-900">
               <tr>
-                {rangeMode && <th className="p-2">Date</th>}
-                <th className="p-2">Employee</th>
-                <th className="p-2">Status</th>
+                {rangeMode && <th className="p-2">{t("table.date")}</th>}
+                <th className="p-2">{t("table.employee")}</th>
+                <th className="p-2">{t("table.status")}</th>
                 {showScheduleVsPlan && (
                   <th className="p-2" title="Compared to weekly schedule (start / end shift)">
-                    Schedule
+                    {t("table.schedule")}
                   </th>
                 )}
-                <th className="p-2">Punches</th>
+                <th className="p-2">{t("table.punches")}</th>
               </tr>
             </thead>
             <tbody>
@@ -455,7 +457,7 @@ export default function TeamPage() {
                     className="p-3 text-sm text-zinc-500"
                     colSpan={rangeMode ? 5 : 4}
                   >
-                    No matching employees.
+                    {t("attendance.noMatches")}
                   </td>
                 </tr>
               )}

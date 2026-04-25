@@ -29,6 +29,22 @@ function canSeeScheduleVsPlan(role: string | null): boolean {
   );
 }
 
+function dayColorClass(isoDate: string) {
+  // Stable, subtle backgrounds per day to visually separate periods in range mode.
+  // Using a tiny hash keeps the same date the same color across views.
+  let h = 0;
+  for (let i = 0; i < isoDate.length; i++) h = (h * 31 + isoDate.charCodeAt(i)) >>> 0;
+  const palette = [
+    "bg-sky-50/70 dark:bg-sky-950/25",
+    "bg-emerald-50/70 dark:bg-emerald-950/25",
+    "bg-amber-50/70 dark:bg-amber-950/25",
+    "bg-violet-50/70 dark:bg-violet-950/25",
+    "bg-rose-50/70 dark:bg-rose-950/25",
+    "bg-teal-50/70 dark:bg-teal-950/25",
+  ];
+  return palette[h % palette.length]!;
+}
+
 export default function TeamPage() {
   const { teamId, departmentId, role } = useAuthStore();
   const showScheduleVsPlan = canSeeScheduleVsPlan(role);
@@ -371,8 +387,17 @@ export default function TeamPage() {
             </thead>
             <tbody>
               {filteredRows.map((r) => (
-                <tr key={r.userId} className="border-t border-zinc-200 dark:border-zinc-800">
-                  {rangeMode && <td className="p-2 font-mono text-xs">{r.recordDate}</td>}
+                <tr
+                  key={`${r.userId}-${r.recordDate}`}
+                  className={`border-t border-zinc-200 dark:border-zinc-800 ${
+                    rangeMode ? dayColorClass(r.recordDate) : ""
+                  }`}
+                >
+                  {rangeMode && (
+                    <td className="p-2 font-mono text-xs text-zinc-700 dark:text-zinc-300">
+                      {r.recordDate}
+                    </td>
+                  )}
                   <td className="p-2">
                     {r.name}
                     <div className="font-mono text-xs text-zinc-500">{r.employeeId}</div>
@@ -446,8 +471,17 @@ export default function TeamPage() {
                 </thead>
                 <tbody>
                   {g.rows.map((r) => (
-                    <tr key={r.userId} className="border-t border-zinc-200 dark:border-zinc-800">
-                      {rangeMode && <td className="p-2 font-mono text-xs">{r.recordDate}</td>}
+                    <tr
+                      key={`${g.teamId}-${r.userId}-${r.recordDate}`}
+                      className={`border-t border-zinc-200 dark:border-zinc-800 ${
+                        rangeMode ? dayColorClass(r.recordDate) : ""
+                      }`}
+                    >
+                      {rangeMode && (
+                        <td className="p-2 font-mono text-xs text-zinc-700 dark:text-zinc-300">
+                          {r.recordDate}
+                        </td>
+                      )}
                       <td className="p-2">
                         {r.name}
                         <div className="font-mono text-xs text-zinc-500">{r.employeeId}</div>

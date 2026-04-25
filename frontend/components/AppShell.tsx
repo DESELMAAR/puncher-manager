@@ -7,6 +7,9 @@ import { useAuthStore } from "@/store/authStore";
 import type { UserRole } from "@/lib/types";
 import { CompanyHeader } from "@/components/company/CompanyHeader";
 import { useUiStore, type BackgroundTheme } from "@/store/uiStore";
+import { useI18nStore } from "@/store/i18nStore";
+import { t } from "@/lib/i18n";
+import type { I18nKey } from "@/lib/i18n";
 
 function backgroundClass(t: BackgroundTheme) {
   switch (t) {
@@ -26,40 +29,40 @@ function backgroundClass(t: BackgroundTheme) {
   }
 }
 
-const links: { href: string; label: string; roles: UserRole[] }[] = [
-  { href: "/dashboard", label: "Dashboard", roles: ["SUPER_ADMIN", "ADMIN", "DEPT_MANAGER", "TEAM_LEADER", "EMPLOYEE"] },
-  { href: "/punch", label: "Punch", roles: ["EMPLOYEE"] },
-  { href: "/history", label: "My punches", roles: ["EMPLOYEE"] },
-  { href: "/notifications", label: "Notifications", roles: ["SUPER_ADMIN", "ADMIN", "DEPT_MANAGER", "TEAM_LEADER", "EMPLOYEE"] },
-  { href: "/team", label: "Team attendance", roles: ["TEAM_LEADER", "DEPT_MANAGER", "SUPER_ADMIN", "ADMIN"] },
+const links: { href: string; labelKey: I18nKey; roles: UserRole[] }[] = [
+  { href: "/dashboard", labelKey: "nav.dashboard", roles: ["SUPER_ADMIN", "ADMIN", "DEPT_MANAGER", "TEAM_LEADER", "EMPLOYEE"] },
+  { href: "/punch", labelKey: "nav.punch", roles: ["EMPLOYEE"] },
+  { href: "/history", labelKey: "nav.myPunches", roles: ["EMPLOYEE"] },
+  { href: "/notifications", labelKey: "nav.notifications", roles: ["SUPER_ADMIN", "ADMIN", "DEPT_MANAGER", "TEAM_LEADER", "EMPLOYEE"] },
+  { href: "/team", labelKey: "nav.teamAttendance", roles: ["TEAM_LEADER", "DEPT_MANAGER", "SUPER_ADMIN", "ADMIN"] },
   {
     href: "/admin/schedule",
-    label: "Weekly schedule",
+    labelKey: "nav.weeklySchedule",
     roles: ["SUPER_ADMIN", "ADMIN", "DEPT_MANAGER", "TEAM_LEADER"],
   },
   {
     href: "/admin/departments",
-    label: "Departments",
+    labelKey: "nav.departments",
     roles: ["SUPER_ADMIN", "ADMIN"],
   },
   {
     href: "/admin/teams",
-    label: "Teams",
+    labelKey: "nav.teams",
     roles: ["SUPER_ADMIN", "ADMIN", "DEPT_MANAGER"],
   },
   {
     href: "/admin/organization",
-    label: "Staff & roles",
+    labelKey: "nav.staffRoles",
     roles: ["SUPER_ADMIN", "ADMIN"],
   },
   {
     href: "/admin/employees",
-    label: "Employees",
+    labelKey: "nav.employees",
     roles: ["SUPER_ADMIN", "ADMIN", "DEPT_MANAGER", "TEAM_LEADER"],
   },
   {
     href: "/admin/settings",
-    label: "Settings",
+    labelKey: "nav.settings",
     roles: ["SUPER_ADMIN"],
   },
 ];
@@ -70,6 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { role, name, clear } = useAuthStore();
   const [refreshKey, setRefreshKey] = useState(0);
   const backgroundTheme = useUiStore((s) => s.backgroundTheme);
+  const lang = useI18nStore((s) => s.lang);
 
   const visible = links.filter((l) => role && l.roles.includes(role));
 
@@ -94,7 +98,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
               }`}
             >
-              {l.label}
+              {t(lang, l.labelKey)}
             </Link>
           ))}
         </nav>
@@ -107,7 +111,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               router.push("/login");
             }}
           >
-            Log out
+            {t(lang, "action.logout")}
           </button>
         </div>
       </aside>
@@ -124,7 +128,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 router.refresh();
               }}
               className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-              title="Refresh"
+              title={t(lang, "action.refresh")}
             >
               <svg
                 aria-hidden="true"
@@ -139,7 +143,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <path d="M21 12a9 9 0 1 1-2.64-6.36" />
                 <path d="M21 3v6h-6" />
               </svg>
-              Refresh
+              {t(lang, "action.refresh")}
             </button>
           </div>
           <div key={refreshKey}>

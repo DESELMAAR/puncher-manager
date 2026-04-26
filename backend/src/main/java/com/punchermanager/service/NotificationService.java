@@ -42,16 +42,32 @@ public class NotificationService {
 
   @Transactional
   public void sendToTeam(User sender, SendNotificationRequest req) {
-    if (sender.getRole() != UserRole.TEAM_LEADER) {
-      throw new ApiException(HttpStatus.FORBIDDEN, "Only team leaders can broadcast");
-    }
     Team team =
         teamRepository
             .findByIdFetched(req.getTeamId())
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Team not found"));
-    if (!team.getTeamLeader().getId().equals(sender.getId())) {
-      throw new ApiException(HttpStatus.FORBIDDEN, "Not your team");
+
+    switch (sender.getRole()) {
+      case SUPER_ADMIN, ADMIN -> {
+        // Can message any team.
+      }
+      case DEPT_MANAGER -> {
+        if (sender.getDepartment() == null) {
+          throw new ApiException(HttpStatus.FORBIDDEN, "No department scope");
+        }
+        if (team.getDepartment() == null
+            || !team.getDepartment().getId().equals(sender.getDepartment().getId())) {
+          throw new ApiException(HttpStatus.FORBIDDEN, "Not your department");
+        }
+      }
+      case TEAM_LEADER -> {
+        if (!team.getTeamLeader().getId().equals(sender.getId())) {
+          throw new ApiException(HttpStatus.FORBIDDEN, "Not your team");
+        }
+      }
+      default -> throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to broadcast");
     }
+
     List<User> recipients = userRepository.findEmployeesByTeamId(team.getId());
     for (User r : recipients) {
       NotificationEntity saved =

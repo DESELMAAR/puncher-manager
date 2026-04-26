@@ -70,6 +70,7 @@ com\punchermanager\bootstrap\DataSeeder.class
 com\punchermanager\service\AttendanceService$ScheduleVsPlanResult.class
 com\punchermanager\service\ScheduleService.class
 com\punchermanager\web\dto\PunchResponse.class
+com\punchermanager\service\NotificationService$1.class
 com\punchermanager\domain\AttendanceStatus.class
 com\punchermanager\web\security\JwtAuthenticationFilter.class
 com\punchermanager\repository\CompanySettingsRepository.class

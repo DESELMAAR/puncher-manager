@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
-import type { NotificationDto, WeeklyScheduleResponse } from "@/lib/types";
+import type { NotificationDto, TeamDto, WeeklyScheduleResponse } from "@/lib/types";
 import { useAuthStore } from "@/store/authStore";
 import { ScheduleConfirmModal } from "@/components/schedule/ScheduleConfirmModal";
 
@@ -10,6 +10,7 @@ export default function NotificationsPage() {
   const token = useAuthStore((s) => s.token);
   const role = useAuthStore((s) => s.role);
   const teamId = useAuthStore((s) => s.teamId);
+  const departmentId = useAuthStore((s) => s.departmentId);
   const [sendText, setSendText] = useState("");
   const [sendOk, setSendOk] = useState<string | null>(null);
   const baseURL =
@@ -19,6 +20,8 @@ export default function NotificationsPage() {
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [scheduleNotificationId, setScheduleNotificationId] = useState<string | null>(null);
   const [schedulePayload, setSchedulePayload] = useState<WeeklyScheduleResponse | null>(null);
+  const [teams, setTeams] = useState<TeamDto[]>([]);
+  const [selectedTeamId, setSelectedTeamId] = useState<string>("");
 
   const unreadScheduleConfirm = useMemo(() => {
     return items.find((n) => !n.read && n.type === "SCHEDULE_CONFIRM" && n.payloadJson);
@@ -32,6 +35,53 @@ export default function NotificationsPage() {
   useEffect(() => {
     void load();
   }, []);
+
+  useEffect(() => {
+    // Load team choices depending on role scope.
+    const canBroadcast =
+      role === "SUPER_ADMIN" || role === "ADMIN" || role === "DEPT_MANAGER" || role === "TEAM_LEADER";
+    if (!canBroadcast) return;
+    if (role === "TEAM_LEADER") {
+      setTeams([]);
+      setSelectedTeamId(teamId ?? "");
+      return;
+    }
+    if (role === "DEPT_MANAGER") {
+      if (!departmentId) {
+        setTeams([]);
+        setSelectedTeamId("");
+        return;
+      }
+      void (async () => {
+        try {
+          const { data } = await api.get<TeamDto[]>(`/api/teams/department/${departmentId}`);
+          setTeams(data);
+          setSelectedTeamId(data[0]?.id ?? "");
+        } catch {
+          setTeams([]);
+          setSelectedTeamId("");
+        }
+      })();
+      return;
+    }
+    // SUPER_ADMIN / ADMIN: allow selecting any team by first loading all departments' teams is bigger;
+    // keep it simple: require choosing a team from current department scope if present, otherwise none.
+    if (departmentId) {
+      void (async () => {
+        try {
+          const { data } = await api.get<TeamDto[]>(`/api/teams/department/${departmentId}`);
+          setTeams(data);
+          setSelectedTeamId(data[0]?.id ?? "");
+        } catch {
+          setTeams([]);
+          setSelectedTeamId("");
+        }
+      })();
+    } else {
+      setTeams([]);
+      setSelectedTeamId("");
+    }
+  }, [role, teamId, departmentId]);
 
   useEffect(() => {
     if (!token) return;
@@ -68,10 +118,11 @@ export default function NotificationsPage() {
   }
 
   async function sendTeam() {
-    if (!teamId || !sendText.trim()) return;
+    const targetTeamId = role === "TEAM_LEADER" ? teamId : selectedTeamId;
+    if (!targetTeamId || !sendText.trim()) return;
     setSendOk(null);
     try {
-      await api.post("/api/notification/send", { teamId, message: sendText.trim() });
+      await api.post("/api/notification/send", { teamId: targetTeamId, message: sendText.trim() });
       setSendText("");
       setSendOk("Sent to your team.");
     } catch (e: unknown) {
@@ -102,9 +153,34 @@ export default function NotificationsPage() {
         </div>
       )}
 
-      {role === "TEAM_LEADER" && teamId && (
+      {(role === "SUPER_ADMIN" ||
+        role === "ADMIN" ||
+        role === "DEPT_MANAGER" ||
+        (role === "TEAM_LEADER" && teamId)) && (
         <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-          <h2 className="font-semibold">Send to team</h2>
+          <h2 className="font-semibold">Send to employees (by team)</h2>
+          {role !== "TEAM_LEADER" && (
+            <label className="mt-2 block text-sm">
+              Team
+              <select
+                className="mt-1 w-full rounded border border-zinc-300 p-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
+                value={selectedTeamId}
+                onChange={(e) => setSelectedTeamId(e.target.value)}
+              >
+                <option value="">— Select —</option>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+              {role === "ADMIN" || role === "SUPER_ADMIN" ? (
+                <div className="mt-1 text-xs text-zinc-500">
+                  Tip: choose a department on Attendance first so teams load here.
+                </div>
+              ) : null}
+            </label>
+          )}
           <textarea
             className="mt-2 w-full rounded border border-zinc-300 p-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
             rows={3}

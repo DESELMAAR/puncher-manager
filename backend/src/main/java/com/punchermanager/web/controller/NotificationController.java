@@ -39,7 +39,7 @@ public class NotificationController {
   }
 
   @PostMapping("/send")
-  @PreAuthorize("hasRole('TEAM_LEADER')")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','DEPT_MANAGER','TEAM_LEADER')")
   public void send(HttpServletRequest http, @Valid @RequestBody SendNotificationRequest body) {
     User user = userContextService.requireCurrentUser(http);
     notificationService.sendToTeam(user, body);

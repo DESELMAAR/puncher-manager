@@ -38,6 +38,10 @@ export interface AttendanceRow {
   employeeId: string;
   departmentName?: string | null;
   teamName?: string | null;
+  deptManagerName?: string | null;
+  deptManagerEmail?: string | null;
+  teamLeaderName?: string | null;
+  teamLeaderEmail?: string | null;
   recordDate: string;
   status: "ON_TIME" | "LATE" | "ABSENT" | null;
   expectedStart: string | null;

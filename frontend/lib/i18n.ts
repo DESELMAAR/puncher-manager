@@ -48,6 +48,8 @@ export type I18nKey =
   | "table.employee"
   | "table.status"
   | "table.schedule"
+  | "table.deptManager"
+  | "table.teamLeader"
   | "table.punches";
 
 const dict: Record<Language, Record<I18nKey, string>> = {
@@ -99,6 +101,8 @@ const dict: Record<Language, Record<I18nKey, string>> = {
     "table.employee": "Employee",
     "table.status": "Status",
     "table.schedule": "Schedule",
+    "table.deptManager": "Dept manager",
+    "table.teamLeader": "Team leader",
     "table.punches": "Punches",
   },
   fr: {
@@ -149,6 +153,8 @@ const dict: Record<Language, Record<I18nKey, string>> = {
     "table.employee": "Employé",
     "table.status": "Statut",
     "table.schedule": "Planning",
+    "table.deptManager": "Resp. département",
+    "table.teamLeader": "Chef d’équipe",
     "table.punches": "Pointages",
   },
   es: {
@@ -199,6 +205,8 @@ const dict: Record<Language, Record<I18nKey, string>> = {
     "table.employee": "Empleado",
     "table.status": "Estado",
     "table.schedule": "Horario",
+    "table.deptManager": "Jefe de depto.",
+    "table.teamLeader": "Líder de equipo",
     "table.punches": "Marcajes",
   },
 };

@@ -198,6 +198,18 @@ public class AttendanceService {
               u.getEmployeeId(),
               u.getDepartment() != null ? u.getDepartment().getName() : null,
               u.getTeam() != null ? u.getTeam().getName() : null,
+              u.getDepartment() != null && u.getDepartment().getAdmin() != null
+                  ? u.getDepartment().getAdmin().getName()
+                  : null,
+              u.getTeam() != null && u.getTeam().getTeamLeader() != null
+                  ? u.getTeam().getTeamLeader().getName()
+                  : null,
+              u.getTeam() != null && u.getTeam().getTeamLeader() != null
+                  ? u.getTeam().getTeamLeader().getEmail()
+                  : null,
+              u.getDepartment() != null && u.getDepartment().getAdmin() != null
+                  ? u.getDepartment().getAdmin().getEmail()
+                  : null,
               date,
               att != null ? att.getStatus() : (derived != null ? derived.status() : null),
               att != null ? att.getExpectedStart() : (derived != null ? derived.expectedStart() : null),
@@ -291,6 +303,18 @@ public class AttendanceService {
                 u.getEmployeeId(),
                 u.getDepartment() != null ? u.getDepartment().getName() : null,
                 u.getTeam() != null ? u.getTeam().getName() : null,
+                u.getDepartment() != null && u.getDepartment().getAdmin() != null
+                    ? u.getDepartment().getAdmin().getName()
+                    : null,
+                u.getTeam() != null && u.getTeam().getTeamLeader() != null
+                    ? u.getTeam().getTeamLeader().getName()
+                    : null,
+                u.getTeam() != null && u.getTeam().getTeamLeader() != null
+                    ? u.getTeam().getTeamLeader().getEmail()
+                    : null,
+                u.getDepartment() != null && u.getDepartment().getAdmin() != null
+                    ? u.getDepartment().getAdmin().getEmail()
+                    : null,
                 day,
                 att != null ? att.getStatus() : (derived != null ? derived.status() : null),
                 att != null ? att.getExpectedStart() : (derived != null ? derived.expectedStart() : null),

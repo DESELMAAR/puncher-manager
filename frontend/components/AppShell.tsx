@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
-import type { UserRole } from "@/lib/types";
+import type { NotificationDto, UserRole } from "@/lib/types";
 import { CompanyHeader } from "@/components/company/CompanyHeader";
 import { useUiStore, type BackgroundTheme } from "@/store/uiStore";
 import { useI18nStore } from "@/store/i18nStore";
@@ -72,11 +72,12 @@ const links: { href: string; labelKey: I18nKey; roles: UserRole[] }[] = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { role, name, clear } = useAuthStore();
+  const { role, name, clear, token } = useAuthStore();
   const [refreshKey, setRefreshKey] = useState(0);
   const backgroundTheme = useUiStore((s) => s.backgroundTheme);
   const lang = useI18nStore((s) => s.lang);
   const [bgUrl, setBgUrl] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const visible = links.filter((l) => role && l.roles.includes(role));
 
@@ -96,9 +97,41 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [refreshKey]);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function loadUnread() {
+      try {
+        const { data } = await api.get<NotificationDto[]>("/api/notification/my");
+        const c = data.filter((n) => !n.read).length;
+        if (!cancelled) setUnreadCount(c);
+      } catch {
+        if (!cancelled) setUnreadCount(0);
+      }
+    }
+
+    void loadUnread();
+    const interval = window.setInterval(loadUnread, 20000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [refreshKey, pathname]);
+
+  useEffect(() => {
+    if (!token) return;
+    const baseURL =
+      process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8080";
+    const url = `${baseURL}/api/notification/stream?access_token=${encodeURIComponent(token)}`;
+    const es = new EventSource(url);
+    es.addEventListener("notification", () => {
+      setUnreadCount((c) => c + 1);
+    });
+    return () => es.close();
+  }, [token]);
+
   return (
     <div
-      className={`min-h-screen text-zinc-900 dark:text-zinc-100 ${backgroundClass(backgroundTheme)}`}
+      className={`min-h-screen text-zinc-900 dark:text-zinc-200 ${backgroundClass(backgroundTheme)}`}
       style={
         bgUrl
           ? {
@@ -127,7 +160,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
               }`}
             >
-              {t(lang, l.labelKey)}
+              <span className="flex items-center justify-between gap-3">
+                <span>{t(lang, l.labelKey)}</span>
+                {l.href === "/notifications" && unreadCount > 0 && (
+                  <span
+                    className="inline-flex min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[11px] font-semibold text-white"
+                    aria-label={`${unreadCount} unread notifications`}
+                    title={`${unreadCount} unread`}
+                  >
+                    {unreadCount}
+                  </span>
+                )}
+              </span>
             </Link>
           ))}
         </nav>
@@ -146,7 +190,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
       <main className="pl-56">
         <div
-          className={`mx-auto p-6 ${pathname?.startsWith("/admin") ? "max-w-7xl" : "max-w-5xl"}`}
+          className={`mx-auto p-6 ${pathname?.startsWith("/admin") ? "max-w-screen-2xl" : "max-w-screen-2xl"}`}
         >
           <div className="mb-3 flex items-center justify-end">
             <button

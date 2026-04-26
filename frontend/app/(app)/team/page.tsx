@@ -88,21 +88,177 @@ function punchBadgeClass(type: string) {
   }
 }
 
-function PunchBadges({ punches }: { punches: AttendanceRow["punches"] }) {
+function CopyButton({ value, title }: { value: string; title?: string }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = value;
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1200);
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => void copy()}
+      className="rounded-md border border-zinc-200 bg-white px-2 py-0.5 text-[11px] text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
+      title={title ?? "Copy"}
+    >
+      {copied ? "Copied" : "Copy"}
+    </button>
+  );
+}
+
+function fmtPunchTime(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function PunchBadges({
+  punches,
+  showTime,
+}: {
+  punches: AttendanceRow["punches"];
+  showTime: boolean;
+}) {
+  const firstByType = useMemo(() => {
+    const m = new Map<string, string>();
+    const list = punches ?? [];
+    for (const p of list) {
+      if (!m.has(p.type)) m.set(p.type, p.punchedAt);
+    }
+    return m;
+  }, [punches]);
+
+  function durationTitle(startIso: string | null, endIso: string | null) {
+    if (!startIso || !endIso) return undefined;
+    const s = new Date(startIso).getTime();
+    const e = new Date(endIso).getTime();
+    if (!Number.isFinite(s) || !Number.isFinite(e) || e < s) return undefined;
+    const totalMin = Math.round((e - s) / 60000);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    const dur = h > 0 ? `${h}h ${m}m` : `${m}m`;
+    return `Duration: ${dur}`;
+  }
+
+  function fmtRange(startIso: string | null, endIso: string | null) {
+    if (!showTime) return "";
+    const s = startIso ? fmtPunchTime(startIso) : "—";
+    const e = endIso ? fmtPunchTime(endIso) : "—";
+    return ` ${s}–${e}`;
+  }
+
   if (!punches || punches.length === 0) return <span className="text-zinc-500">—</span>;
+
   return (
     <div className="flex flex-wrap gap-1.5">
-      {punches.map((p) => (
+      {/* WORK_START */}
+      {firstByType.get("WORK_START") && (
         <span
-          key={p.id}
           className={`inline-flex items-center rounded-full border px-2 py-0.5 font-mono text-[11px] ${punchBadgeClass(
-            p.type,
+            "WORK_START",
           )}`}
-          title={new Date(p.punchedAt).toLocaleString()}
+          title={firstByType.get("WORK_START") ? new Date(firstByType.get("WORK_START")!).toLocaleString() : undefined}
         >
-          {p.type}
+          WORK_START
+          {showTime && (
+            <span className="ml-1 opacity-70">{fmtPunchTime(firstByType.get("WORK_START")!)}</span>
+          )}
         </span>
-      ))}
+      )}
+
+      {/* BREAK1 (START+END in one badge) */}
+      {(firstByType.get("BREAK1_START") || firstByType.get("BREAK1_END")) && (
+        <span
+          className={`inline-flex items-center rounded-full border px-2 py-0.5 font-mono text-[11px] ${punchBadgeClass(
+            "BREAK1_START",
+          )}`}
+          title={
+            durationTitle(
+              firstByType.get("BREAK1_START") ?? null,
+              firstByType.get("BREAK1_END") ?? null,
+            ) ?? undefined
+          }
+        >
+          BREAK1
+          {showTime && (
+            <span className="ml-1 opacity-70">
+              {fmtRange(firstByType.get("BREAK1_START") ?? null, firstByType.get("BREAK1_END") ?? null)}
+            </span>
+          )}
+        </span>
+      )}
+
+      {/* LUNCH (START+END in one badge) */}
+      {(firstByType.get("LUNCH_START") || firstByType.get("LUNCH_END")) && (
+        <span
+          className={`inline-flex items-center rounded-full border px-2 py-0.5 font-mono text-[11px] ${punchBadgeClass(
+            "LUNCH_START",
+          )}`}
+          title={
+            durationTitle(
+              firstByType.get("LUNCH_START") ?? null,
+              firstByType.get("LUNCH_END") ?? null,
+            ) ?? undefined
+          }
+        >
+          LUNCH
+          {showTime && (
+            <span className="ml-1 opacity-70">
+              {fmtRange(firstByType.get("LUNCH_START") ?? null, firstByType.get("LUNCH_END") ?? null)}
+            </span>
+          )}
+        </span>
+      )}
+
+      {/* BREAK2 (START+END in one badge) */}
+      {(firstByType.get("BREAK2_START") || firstByType.get("BREAK2_END")) && (
+        <span
+          className={`inline-flex items-center rounded-full border px-2 py-0.5 font-mono text-[11px] ${punchBadgeClass(
+            "BREAK2_START",
+          )}`}
+          title={
+            durationTitle(
+              firstByType.get("BREAK2_START") ?? null,
+              firstByType.get("BREAK2_END") ?? null,
+            ) ?? undefined
+          }
+        >
+          BREAK2
+          {showTime && (
+            <span className="ml-1 opacity-70">
+              {fmtRange(firstByType.get("BREAK2_START") ?? null, firstByType.get("BREAK2_END") ?? null)}
+            </span>
+          )}
+        </span>
+      )}
+
+      {/* LOGOUT */}
+      {firstByType.get("LOGOUT") && (
+        <span
+          className={`inline-flex items-center rounded-full border px-2 py-0.5 font-mono text-[11px] ${punchBadgeClass(
+            "LOGOUT",
+          )}`}
+          title={firstByType.get("LOGOUT") ? new Date(firstByType.get("LOGOUT")!).toLocaleString() : undefined}
+        >
+          LOGOUT
+          {showTime && (
+            <span className="ml-1 opacity-70">{fmtPunchTime(firstByType.get("LOGOUT")!)}</span>
+          )}
+        </span>
+      )}
     </div>
   );
 }
@@ -111,6 +267,11 @@ export default function TeamPage() {
   const t = useT();
   const { teamId, departmentId, role } = useAuthStore();
   const showScheduleVsPlan = canSeeScheduleVsPlan(role);
+
+  const [openRow, setOpenRow] = useState<string | null>(null);
+  const [expandAll, setExpandAll] = useState(false);
+  const [openPunchTimes, setOpenPunchTimes] = useState<Set<string>>(() => new Set());
+  const [expandAllPunchTimes, setExpandAllPunchTimes] = useState(false);
 
   const [departments, setDepartments] = useState<DepartmentDto[]>([]);
   const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
@@ -438,65 +599,184 @@ export default function TeamPage() {
             <thead className="bg-zinc-100 dark:bg-zinc-900">
               <tr>
                 {rangeMode && <th className="p-2">{t("table.date")}</th>}
-                <th className="p-2">{t("table.employee")}</th>
+                <th className="p-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                      aria-label={expandAll ? "Collapse all rows" : "Expand all rows"}
+                      aria-pressed={expandAll}
+                      title={expandAll ? "Collapse all rows" : "Expand all rows"}
+                      onClick={() => {
+                        setExpandAll((v) => !v);
+                        setOpenRow(null);
+                      }}
+                    >
+                      <span
+                        className={`inline-block transition-transform ${expandAll ? "rotate-180" : ""}`}
+                        aria-hidden="true"
+                      >
+                        ▾
+                      </span>
+                    </button>
+                    <span>{t("table.employee")}</span>
+                  </div>
+                </th>
                 <th className="p-2">{t("table.status")}</th>
                 {showScheduleVsPlan && (
                   <th className="p-2" title="Compared to weekly schedule (start / end shift)">
                     {t("table.schedule")}
                   </th>
                 )}
-                <th className="p-2">{t("table.punches")}</th>
+                <th className="p-2">{t("table.deptManager")}</th>
+                <th className="p-2">{t("table.teamLeader")}</th>
+                <th className="p-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>{t("table.punches")}</span>
+                    <button
+                      type="button"
+                      className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                      aria-label={expandAllPunchTimes ? "Collapse punch times for all rows" : "Expand punch times for all rows"}
+                      aria-pressed={expandAllPunchTimes}
+                      title={expandAllPunchTimes ? "Collapse punch times for all rows" : "Expand punch times for all rows"}
+                      onClick={() => {
+                        setExpandAllPunchTimes((v) => !v);
+                        setOpenPunchTimes(new Set());
+                      }}
+                    >
+                      {expandAllPunchTimes ? "−" : "+"}
+                    </button>
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {filteredRows.map((r) => (
-                <tr
-                  key={`${r.userId}-${r.recordDate}`}
-                  className={`border-t border-zinc-200 dark:border-zinc-800 ${
-                    rangeMode ? dayColorClass(r.recordDate) : ""
-                  }`}
-                >
-                  {rangeMode && (
-                    <td className="p-2 font-mono text-xs text-zinc-700 dark:text-zinc-300">
-                      {r.recordDate}
-                    </td>
-                  )}
-                  <td className="p-2">
-                    {r.name}
-                    <div className="font-mono text-xs text-zinc-500">{r.employeeId}</div>
-                  </td>
-                  <td className="p-2">{r.status ?? "—"}</td>
-                  {showScheduleVsPlan && (
-                    <td className="p-2 text-center" title={r.scheduleVsPlanNote ?? undefined}>
-                      {r.scheduleVsPlanOk === true && (
-                        <span
-                          className="text-lg text-emerald-600 dark:text-emerald-400"
-                          aria-label="OK"
-                        >
-                          ✓
-                        </span>
+              {filteredRows.map((r) => {
+                const rowKey = `${r.userId}-${r.recordDate}`;
+                const expanded = expandAll || openRow === rowKey;
+                const punchesExpanded = openPunchTimes.has(rowKey);
+                return (
+                  <tr
+                    key={rowKey}
+                    className={`border-t border-zinc-200 dark:border-zinc-800 ${
+                      rangeMode ? dayColorClass(r.recordDate) : ""
+                    }`}
+                  >
+                      {rangeMode && (
+                        <td className="p-2 font-mono text-xs text-zinc-700 dark:text-zinc-300">
+                          {r.recordDate}
+                        </td>
                       )}
-                      {r.scheduleVsPlanOk === false && (
-                        <span
-                          className="text-lg text-amber-600 dark:text-amber-400"
-                          aria-label="Issue"
-                        >
-                          ⚠
-                        </span>
+                      <td className="p-2">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                            aria-label="Toggle details"
+                            aria-expanded={expanded}
+                            onClick={() => setOpenRow((cur) => (cur === rowKey ? null : rowKey))}
+                            disabled={expandAll}
+                            title={expandAll ? "Disable expand-all to toggle individually" : "Toggle row details"}
+                          >
+                            <span
+                              className={`inline-block transition-transform ${
+                                expanded ? "rotate-180" : ""
+                              }`}
+                              aria-hidden="true"
+                            >
+                              ▾
+                            </span>
+                          </button>
+                          <span className="font-medium">{r.name}</span>
+                        </div>
+                        {expanded && (
+                          <div className="mt-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                            {r.employeeId}
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-2">{r.status ?? "—"}</td>
+                      {showScheduleVsPlan && (
+                        <td className="p-2 text-center" title={r.scheduleVsPlanNote ?? undefined}>
+                          {r.scheduleVsPlanOk === true && (
+                            <span
+                              className="text-lg text-emerald-600 dark:text-emerald-400"
+                              aria-label="OK"
+                            >
+                              ✓
+                            </span>
+                          )}
+                          {r.scheduleVsPlanOk === false && (
+                            <span
+                              className="text-lg text-amber-600 dark:text-amber-400"
+                              aria-label="Issue"
+                            >
+                              ⚠
+                            </span>
+                          )}
+                          {r.scheduleVsPlanOk == null && <span className="text-zinc-400">—</span>}
+                        </td>
                       )}
-                      {r.scheduleVsPlanOk == null && <span className="text-zinc-400">—</span>}
-                    </td>
-                  )}
-                  <td className="p-2 text-xs">
-                    <PunchBadges punches={r.punches} />
-                  </td>
-                </tr>
-              ))}
+                      <td className="p-2 text-zinc-700 dark:text-zinc-300">
+                        {r.deptManagerName ?? "—"}
+                        {expanded && r.deptManagerEmail && (
+                          <div className="mt-1 flex items-center gap-2 font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+                            <span>{r.deptManagerEmail}</span>
+                            <CopyButton
+                              value={r.deptManagerEmail}
+                              title="Copy dept manager email"
+                            />
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-2 text-zinc-700 dark:text-zinc-300">
+                        {r.teamLeaderName ?? "—"}
+                        {expanded && r.teamLeaderEmail && (
+                          <div className="mt-1 flex items-center gap-2 font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+                            <span>{r.teamLeaderEmail}</span>
+                            <CopyButton
+                              value={r.teamLeaderEmail}
+                              title="Copy team leader email"
+                            />
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-2 text-xs">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <PunchBadges
+                              punches={r.punches}
+                              showTime={expanded || punchesExpanded || expandAllPunchTimes}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            className="shrink-0 rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                            aria-label={punchesExpanded ? "Hide punch times" : "Show punch times"}
+                            title={punchesExpanded ? "Hide punch times" : "Show punch times"}
+                            onClick={() =>
+                              setOpenPunchTimes((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(rowKey)) next.delete(rowKey);
+                                else next.add(rowKey);
+                                return next;
+                              })
+                            }
+                            disabled={expandAllPunchTimes}
+                            aria-disabled={expandAllPunchTimes}
+                          >
+                            {punchesExpanded ? "−" : "+"}
+                          </button>
+                        </div>
+                      </td>
+                  </tr>
+                );
+              })}
               {filteredRows.length === 0 && (
                 <tr>
                   <td
                     className="p-3 text-sm text-zinc-500"
-                    colSpan={rangeMode ? 5 : 4}
+                    colSpan={rangeMode ? 7 : 6}
                   >
                     {t("attendance.noMatches")}
                   </td>
@@ -522,20 +802,70 @@ export default function TeamPage() {
                   {g.rows.length} employee{g.rows.length === 1 ? "" : "s"}
                 </div>
               </div>
+              <div className="border-t border-zinc-200 bg-white/40 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-black/5 dark:text-zinc-300">
+                {t("table.deptManager")}: <span className="font-medium">{g.rows[0]?.deptManagerName ?? "—"}</span>{" "}
+                • {t("table.teamLeader")}:{" "}
+                <span className="font-medium">{g.rows[0]?.teamLeaderName ?? "—"}</span>
+              </div>
               <table className="min-w-full text-left text-sm">
                 <thead>
                   <tr className="border-t border-zinc-200 bg-white/70 dark:border-zinc-800 dark:bg-zinc-950/60">
                     {rangeMode && <th className="p-2">Date</th>}
-                    <th className="p-2">Employee</th>
+                    <th className="p-2">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                          aria-label={expandAll ? "Collapse all rows" : "Expand all rows"}
+                          aria-pressed={expandAll}
+                          title={expandAll ? "Collapse all rows" : "Expand all rows"}
+                          onClick={() => {
+                            setExpandAll((v) => !v);
+                            setOpenRow(null);
+                          }}
+                        >
+                          <span
+                            className={`inline-block transition-transform ${expandAll ? "rotate-180" : ""}`}
+                            aria-hidden="true"
+                          >
+                            ▾
+                          </span>
+                        </button>
+                        <span>Employee</span>
+                      </div>
+                    </th>
                     <th className="p-2">Status</th>
                     {showScheduleVsPlan && <th className="p-2">Schedule</th>}
-                    <th className="p-2">Punches</th>
+                    <th className="p-2">{t("table.deptManager")}</th>
+                    <th className="p-2">{t("table.teamLeader")}</th>
+                    <th className="p-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span>{t("table.punches")}</span>
+                        <button
+                          type="button"
+                          className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                          aria-label={expandAllPunchTimes ? "Collapse punch times for all rows" : "Expand punch times for all rows"}
+                          aria-pressed={expandAllPunchTimes}
+                          title={expandAllPunchTimes ? "Collapse punch times for all rows" : "Expand punch times for all rows"}
+                          onClick={() => {
+                            setExpandAllPunchTimes((v) => !v);
+                            setOpenPunchTimes(new Set());
+                          }}
+                        >
+                          {expandAllPunchTimes ? "−" : "+"}
+                        </button>
+                      </div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {g.rows.map((r) => (
+                  {g.rows.map((r) => {
+                    const rowKey = `${g.teamId}-${r.userId}-${r.recordDate}`;
+                    const expanded = expandAll || openRow === rowKey;
+                    const punchesExpanded = openPunchTimes.has(rowKey);
+                    return (
                     <tr
-                      key={`${g.teamId}-${r.userId}-${r.recordDate}`}
+                      key={rowKey}
                       className={`border-t border-zinc-200 dark:border-zinc-800 ${
                         rangeMode ? dayColorClass(r.recordDate) : ""
                       }`}
@@ -546,8 +876,32 @@ export default function TeamPage() {
                         </td>
                       )}
                       <td className="p-2">
-                        {r.name}
-                        <div className="font-mono text-xs text-zinc-500">{r.employeeId}</div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                            aria-label="Toggle details"
+                            aria-expanded={expanded}
+                            onClick={() => setOpenRow((cur) => (cur === rowKey ? null : rowKey))}
+                            disabled={expandAll}
+                            title={expandAll ? "Disable expand-all to toggle individually" : "Toggle row details"}
+                          >
+                            <span
+                              className={`inline-block transition-transform ${
+                                expanded ? "rotate-180" : ""
+                              }`}
+                              aria-hidden="true"
+                            >
+                              ▾
+                            </span>
+                          </button>
+                          <span className="font-medium">{r.name}</span>
+                        </div>
+                        {expanded && (
+                          <div className="mt-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                            {r.employeeId}
+                          </div>
+                        )}
                       </td>
                       <td className="p-2">{r.status ?? "—"}</td>
                       {showScheduleVsPlan && (
@@ -571,11 +925,61 @@ export default function TeamPage() {
                           {r.scheduleVsPlanOk == null && <span className="text-zinc-400">—</span>}
                         </td>
                       )}
+                      <td className="p-2 text-zinc-700 dark:text-zinc-300">
+                        <div>{r.deptManagerName ?? "—"}</div>
+                        {expanded && r.deptManagerEmail && (
+                          <div className="mt-1 flex items-center gap-2 font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+                            <span>{r.deptManagerEmail}</span>
+                            <CopyButton
+                              value={r.deptManagerEmail}
+                              title="Copy dept manager email"
+                            />
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-2 text-zinc-700 dark:text-zinc-300">
+                        <div>{r.teamLeaderName ?? "—"}</div>
+                        {expanded && r.teamLeaderEmail && (
+                          <div className="mt-1 flex items-center gap-2 font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+                            <span>{r.teamLeaderEmail}</span>
+                            <CopyButton
+                              value={r.teamLeaderEmail}
+                              title="Copy team leader email"
+                            />
+                          </div>
+                        )}
+                      </td>
                       <td className="p-2 text-xs">
-                        <PunchBadges punches={r.punches} />
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <PunchBadges
+                              punches={r.punches}
+                              showTime={expanded || punchesExpanded || expandAllPunchTimes}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            className="shrink-0 rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                            aria-label={punchesExpanded ? "Hide punch times" : "Show punch times"}
+                            title={punchesExpanded ? "Hide punch times" : "Show punch times"}
+                            onClick={() =>
+                              setOpenPunchTimes((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(rowKey)) next.delete(rowKey);
+                                else next.add(rowKey);
+                                return next;
+                              })
+                            }
+                            disabled={expandAllPunchTimes}
+                            aria-disabled={expandAllPunchTimes}
+                          >
+                            {punchesExpanded ? "−" : "+"}
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

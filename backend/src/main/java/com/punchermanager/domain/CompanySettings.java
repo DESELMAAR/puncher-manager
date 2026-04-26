@@ -31,6 +31,14 @@ public class CompanySettings {
   @Column(name = "site_location")
   private String siteLocation;
 
+  /** Public URL to a logo image displayed in the top header. */
+  @Column(name = "logo_url", columnDefinition = "TEXT")
+  private String logoUrl;
+
+  /** Public URL to a background image used behind the company header. */
+  @Column(name = "background_image_url", columnDefinition = "TEXT")
+  private String backgroundImageUrl;
+
   @UpdateTimestamp
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
@@ -73,6 +81,22 @@ public class CompanySettings {
 
   public void setSiteLocation(String siteLocation) {
     this.siteLocation = siteLocation;
+  }
+
+  public String getLogoUrl() {
+    return logoUrl;
+  }
+
+  public void setLogoUrl(String logoUrl) {
+    this.logoUrl = logoUrl;
+  }
+
+  public String getBackgroundImageUrl() {
+    return backgroundImageUrl;
+  }
+
+  public void setBackgroundImageUrl(String backgroundImageUrl) {
+    this.backgroundImageUrl = backgroundImageUrl;
   }
 
   public Instant getUpdatedAt() {

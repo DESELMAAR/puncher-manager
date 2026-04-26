@@ -60,8 +60,10 @@ public class PunchService {
       throw new ApiException(HttpStatus.FORBIDDEN, "Only employees can punch");
     }
     Instant when = request.getTimestamp() != null ? request.getTimestamp() : Instant.now();
+    // Compute the "attendance day" in the SAME timezone as the UI calendar day.
     LocalDate day = LocalDate.ofInstant(when, zone);
 
+    // Build a day window [00:00, next day 00:00) in the same zone for consistent sequencing.
     List<Punch> dayPunches =
         punchRepository.findByUserAndRange(
             user.getId(),

@@ -325,6 +325,7 @@ public class AttendanceService {
     if (firstWorkStart == null) return null;
 
     LocalTime actualStart = LocalTime.ofInstant(firstWorkStart.punchedAt(), zone);
+    // Compare Instants to avoid local-time edge cases and keep behavior timezone-correct.
     Instant scheduledStart = expectedStart.atDate(date).atZone(zone).toInstant();
     long minutesDiff = ChronoUnit.MINUTES.between(scheduledStart, firstWorkStart.punchedAt());
     boolean late = minutesDiff > 0;

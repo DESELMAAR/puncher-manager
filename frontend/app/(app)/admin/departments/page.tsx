@@ -219,7 +219,19 @@ export default function DepartmentsAdminPage() {
                 <select
                   className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-950"
                   value={form.adminId}
-                  onChange={(e) => setForm((f) => ({ ...f, adminId: e.target.value }))}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setForm((f) => ({ ...f, adminId: id }));
+                    if (!id) return;
+                    const related = rows
+                      .filter((d) => d.adminId === id && (!editing || d.id !== editing.id))
+                      .map((d) => d.name);
+                    if (related.length > 0) {
+                      toast.message(
+                        `This DEPT_MANAGER is already assigned to: ${related.join(", ")}`,
+                      );
+                    }
+                  }}
                 >
                   <option value="">— None —</option>
                   {deptManagers.map((u) => (

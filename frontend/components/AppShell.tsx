@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import type { UserRole } from "@/lib/types";
@@ -10,6 +10,8 @@ import { useUiStore, type BackgroundTheme } from "@/store/uiStore";
 import { useI18nStore } from "@/store/i18nStore";
 import { t } from "@/lib/i18n";
 import type { I18nKey } from "@/lib/i18n";
+import { api } from "@/lib/api";
+import type { CompanySettingsDto } from "@/lib/types";
 
 function backgroundClass(t: BackgroundTheme) {
   switch (t) {
@@ -74,12 +76,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [refreshKey, setRefreshKey] = useState(0);
   const backgroundTheme = useUiStore((s) => s.backgroundTheme);
   const lang = useI18nStore((s) => s.lang);
+  const [bgUrl, setBgUrl] = useState<string | null>(null);
 
   const visible = links.filter((l) => role && l.roles.includes(role));
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { data } = await api.get<CompanySettingsDto>("/api/settings/company");
+        const url = data?.backgroundImageUrl?.trim() || null;
+        if (!cancelled) setBgUrl(url);
+      } catch {
+        if (!cancelled) setBgUrl(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshKey]);
 
   return (
     <div
       className={`min-h-screen text-zinc-900 dark:text-zinc-100 ${backgroundClass(backgroundTheme)}`}
+      style={
+        bgUrl
+          ? {
+              backgroundImage: `url(${bgUrl})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              backgroundAttachment: "fixed",
+            }
+          : undefined
+      }
     >
       <aside className="fixed inset-y-0 left-0 w-56 border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div className="border-b border-zinc-200 px-4 py-4 dark:border-zinc-800">
@@ -123,7 +152,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={() => {
-                // Most pages fetch data in client effects; remount to refetch without browser reload.
+                // Many pages fetch via `useEffect`; remounting forces those effects to run again.
                 setRefreshKey((k) => k + 1);
                 router.refresh();
               }}

@@ -25,7 +25,7 @@ public class CompanySettingsService {
   public CompanySettingsDto get() {
     CompanySettings s = repo.findLatest().stream().findFirst().orElse(null);
     if (s == null) {
-      return new CompanySettingsDto(null, null, null, null, null, null);
+      return new CompanySettingsDto(null, null, null, null, null, null, null, null);
     }
     return toDto(s);
   }
@@ -45,6 +45,11 @@ public class CompanySettingsService {
     s.setSiteLocation(req.getSiteLocation() != null && !req.getSiteLocation().isBlank()
         ? req.getSiteLocation().trim()
         : null);
+    s.setLogoUrl(req.getLogoUrl() != null && !req.getLogoUrl().isBlank() ? req.getLogoUrl().trim() : null);
+    s.setBackgroundImageUrl(
+        req.getBackgroundImageUrl() != null && !req.getBackgroundImageUrl().isBlank()
+            ? req.getBackgroundImageUrl().trim()
+            : null);
     CompanySettings saved = repo.save(s);
     return toDto(saved);
   }
@@ -66,6 +71,8 @@ public class CompanySettingsService {
         s.getPostalAddress(),
         s.getDepartmentLabel(),
         s.getSiteLocation(),
+        s.getLogoUrl(),
+        s.getBackgroundImageUrl(),
         s.getUpdatedAt());
   }
 }

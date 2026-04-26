@@ -33,17 +33,30 @@ export function CompanyHeader() {
     settings?.departmentLabel,
     settings?.postalAddress,
   );
+  const logo = settings?.logoUrl?.trim() || null;
 
   return (
     <div className="mb-4 rounded-xl border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/70">
-      <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{title}</div>
-      {meta ? (
-        <div className="mt-0.5 text-xs text-zinc-600 dark:text-zinc-400">{meta}</div>
-      ) : (
-        <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-500">
-          Company info not configured yet.
+      <div className="flex items-center gap-3">
+        {logo && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={logo}
+            alt="Company logo"
+            className="h-9 w-9 rounded-md border border-zinc-200 bg-white object-contain p-1 dark:border-zinc-800"
+          />
+        )}
+        <div>
+          <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{title}</div>
+          {meta ? (
+            <div className="mt-0.5 text-xs text-zinc-600 dark:text-zinc-400">{meta}</div>
+          ) : (
+            <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-500">
+              Company info not configured yet.
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

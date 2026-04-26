@@ -61,6 +61,52 @@ function teamAccentClass(teamId: string) {
   return palette[h % palette.length]!;
 }
 
+function punchBadgeClass(type: string) {
+  switch (type) {
+    case "WORK_START":
+      return "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100";
+    case "LOGOUT":
+      return "border-zinc-300 bg-zinc-50 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100";
+
+    case "BREAK1_START":
+      return "border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100";
+    case "BREAK1_END":
+      return "border-sky-200 bg-sky-100 text-sky-900 dark:border-sky-700 dark:bg-sky-900/40 dark:text-sky-100";
+
+    case "LUNCH_START":
+      return "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100";
+    case "LUNCH_END":
+      return "border-amber-200 bg-amber-100 text-amber-900 dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-100";
+
+    case "BREAK2_START":
+      return "border-violet-300 bg-violet-50 text-violet-900 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-100";
+    case "BREAK2_END":
+      return "border-violet-200 bg-violet-100 text-violet-900 dark:border-violet-700 dark:bg-violet-900/40 dark:text-violet-100";
+
+    default:
+      return "border-zinc-200 bg-white text-zinc-800 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200";
+  }
+}
+
+function PunchBadges({ punches }: { punches: AttendanceRow["punches"] }) {
+  if (!punches || punches.length === 0) return <span className="text-zinc-500">—</span>;
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {punches.map((p) => (
+        <span
+          key={p.id}
+          className={`inline-flex items-center rounded-full border px-2 py-0.5 font-mono text-[11px] ${punchBadgeClass(
+            p.type,
+          )}`}
+          title={new Date(p.punchedAt).toLocaleString()}
+        >
+          {p.type}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function TeamPage() {
   const t = useT();
   const { teamId, departmentId, role } = useAuthStore();
@@ -418,11 +464,6 @@ export default function TeamPage() {
                   <td className="p-2">
                     {r.name}
                     <div className="font-mono text-xs text-zinc-500">{r.employeeId}</div>
-                    {(r.departmentName || r.teamName) && (
-                      <div className="text-xs text-zinc-500">
-                        {r.departmentName ?? "—"} {" · "} {r.teamName ?? "—"}
-                      </div>
-                    )}
                   </td>
                   <td className="p-2">{r.status ?? "—"}</td>
                   {showScheduleVsPlan && (
@@ -447,7 +488,7 @@ export default function TeamPage() {
                     </td>
                   )}
                   <td className="p-2 text-xs">
-                    {r.punches?.map((p) => p.type).join(", ") || "—"}
+                    <PunchBadges punches={r.punches} />
                   </td>
                 </tr>
               ))}
@@ -507,11 +548,6 @@ export default function TeamPage() {
                       <td className="p-2">
                         {r.name}
                         <div className="font-mono text-xs text-zinc-500">{r.employeeId}</div>
-                        {(r.departmentName || r.teamName) && (
-                          <div className="text-xs text-zinc-500">
-                            {r.departmentName ?? "—"} {" · "} {r.teamName ?? "—"}
-                          </div>
-                        )}
                       </td>
                       <td className="p-2">{r.status ?? "—"}</td>
                       {showScheduleVsPlan && (
@@ -536,7 +572,7 @@ export default function TeamPage() {
                         </td>
                       )}
                       <td className="p-2 text-xs">
-                        {r.punches?.map((p) => p.type).join(", ") || "—"}
+                        <PunchBadges punches={r.punches} />
                       </td>
                     </tr>
                   ))}

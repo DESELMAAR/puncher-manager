@@ -8,7 +8,8 @@ services:
     environment:
       POSTGRES_DB: puncher_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 1234
+      # Note: this only applies on first init; existing volumes keep old password.
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
     volumes:
@@ -24,13 +25,13 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "8081:8080"
     environment:
 
 
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/puncher_db
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: 1234
+      SPRING_DATASOURCE_PASSWORD: postgres
       JWT_SECRET: docker-dev-change-me-use-long-random-secret-string-here-min-256-bits
       JWT_EXPIRATION_MS: "28800000"
       CORS_ORIGINS: http://localhost:3000
@@ -44,8 +45,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        # Browser on host calls API at localhost:8080 (same machine port mapping)
-        NEXT_PUBLIC_API_URL: http://localhost:8080
+        # Browser on host calls API at the published backend port
+        NEXT_PUBLIC_API_URL: http://localhost:8081
     ports:
       - "3000:3000"
     environment:

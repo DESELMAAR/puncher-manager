@@ -12,6 +12,8 @@ type FormState = {
   postalAddress: string;
   departmentLabel: string;
   siteLocation: string;
+  logoUrl: string;
+  backgroundImageUrl: string;
 };
 
 export default function SettingsPage() {
@@ -23,6 +25,8 @@ export default function SettingsPage() {
     postalAddress: "",
     departmentLabel: "",
     siteLocation: "",
+    logoUrl: "",
+    backgroundImageUrl: "",
   });
 
   useEffect(() => {
@@ -36,6 +40,8 @@ export default function SettingsPage() {
           postalAddress: data.postalAddress ?? "",
           departmentLabel: data.departmentLabel ?? "",
           siteLocation: data.siteLocation ?? "",
+          logoUrl: data.logoUrl ?? "",
+          backgroundImageUrl: data.backgroundImageUrl ?? "",
         });
       } catch (e) {
         toast.error(extractApiMessage(e));
@@ -64,6 +70,8 @@ export default function SettingsPage() {
         postalAddress: form.postalAddress,
         departmentLabel: form.departmentLabel || null,
         siteLocation: form.siteLocation || null,
+        logoUrl: form.logoUrl || null,
+        backgroundImageUrl: form.backgroundImageUrl || null,
       });
       toast.success("Settings saved");
     } catch (e) {
@@ -78,7 +86,14 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       await api.delete("/api/settings/company");
-      setForm({ companyName: "", postalAddress: "", departmentLabel: "", siteLocation: "" });
+      setForm({
+        companyName: "",
+        postalAddress: "",
+        departmentLabel: "",
+        siteLocation: "",
+        logoUrl: "",
+        backgroundImageUrl: "",
+      });
       toast.success("Settings cleared");
     } catch (e) {
       toast.error("Could not clear", { description: extractApiMessage(e) });
@@ -118,6 +133,26 @@ export default function SettingsPage() {
                 onChange={(e) => setForm((p) => ({ ...p, siteLocation: e.target.value }))}
                 className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-950"
                 placeholder="Tunis HQ / Plant 2 / …"
+              />
+            </label>
+
+            <label className="text-sm">
+              <div className="mb-1 font-medium">Logo URL</div>
+              <input
+                value={form.logoUrl}
+                onChange={(e) => setForm((p) => ({ ...p, logoUrl: e.target.value }))}
+                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-950"
+                placeholder="https://…/logo.png"
+              />
+            </label>
+
+            <label className="text-sm">
+              <div className="mb-1 font-medium">Header background image URL</div>
+              <input
+                value={form.backgroundImageUrl}
+                onChange={(e) => setForm((p) => ({ ...p, backgroundImageUrl: e.target.value }))}
+                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-950"
+                placeholder="https://…/background.jpg"
               />
             </label>
 

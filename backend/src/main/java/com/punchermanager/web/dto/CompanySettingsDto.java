@@ -9,5 +9,7 @@ public record CompanySettingsDto(
     String postalAddress,
     String departmentLabel,
     String siteLocation,
+    String logoUrl,
+    String backgroundImageUrl,
     Instant updatedAt) {}
 

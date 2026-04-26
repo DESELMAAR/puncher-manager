@@ -49,7 +49,9 @@ public class DepartmentService {
     Department saved = departmentRepository.save(d);
     if (saved.getAdmin() != null) {
       User a = saved.getAdmin();
-      a.setDepartment(saved);
+      if (a.getDepartment() == null) {
+        a.setDepartment(saved);
+      }
       userRepository.save(a);
     }
     return toResponse(saved);
@@ -72,8 +74,12 @@ public class DepartmentService {
         throw new ApiException(HttpStatus.BAD_REQUEST, "Department admin must be DEPT_MANAGER");
       }
       d.setAdmin(admin);
-      admin.setDepartment(d);
+      if (admin.getDepartment() == null) {
+        admin.setDepartment(d);
+      }
       userRepository.save(admin);
+    } else {
+      d.setAdmin(null);
     }
     return toResponse(departmentRepository.save(d));
   }

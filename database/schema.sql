@@ -152,6 +152,8 @@ CREATE TABLE company_settings (
   postal_address TEXT NULL,
   department_label VARCHAR(255) NULL,
   site_location VARCHAR(255) NULL,
+  logo_url TEXT NULL,
+  background_image_url TEXT NULL,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 

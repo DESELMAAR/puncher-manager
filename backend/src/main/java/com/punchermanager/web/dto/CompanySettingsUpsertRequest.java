@@ -12,6 +12,10 @@ public class CompanySettingsUpsertRequest {
 
   private String siteLocation;
 
+  private String logoUrl;
+
+  private String backgroundImageUrl;
+
   public String getCompanyName() {
     return companyName;
   }
@@ -42,6 +46,22 @@ public class CompanySettingsUpsertRequest {
 
   public void setSiteLocation(String siteLocation) {
     this.siteLocation = siteLocation;
+  }
+
+  public String getLogoUrl() {
+    return logoUrl;
+  }
+
+  public void setLogoUrl(String logoUrl) {
+    this.logoUrl = logoUrl;
+  }
+
+  public String getBackgroundImageUrl() {
+    return backgroundImageUrl;
+  }
+
+  public void setBackgroundImageUrl(String backgroundImageUrl) {
+    this.backgroundImageUrl = backgroundImageUrl;
   }
 }
 

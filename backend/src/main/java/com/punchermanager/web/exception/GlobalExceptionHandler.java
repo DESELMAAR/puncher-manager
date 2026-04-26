@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -46,6 +47,22 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(AccessDeniedException.class)
   public ResponseEntity<Map<String, Object>> handleDenied(AccessDeniedException ex) {
     return build(HttpStatus.FORBIDDEN, "Access denied");
+  }
+
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  public ResponseEntity<Map<String, Object>> handleIntegrity(DataIntegrityViolationException ex) {
+    String msg = "Data integrity violation";
+    Throwable root = ex.getMostSpecificCause();
+    if (root != null && root.getMessage() != null) {
+      String m = root.getMessage();
+      if (m.toLowerCase().contains("departments") && m.toLowerCase().contains("admin")) {
+        msg =
+            "This department manager is already assigned (database constraint). "
+                + "Remove the unique constraint on departments.admin_id to allow one manager for multiple departments.";
+      }
+    }
+    log.warn("DataIntegrityViolationException", ex);
+    return build(HttpStatus.BAD_REQUEST, msg);
   }
 
   @ExceptionHandler(Exception.class)

@@ -63,6 +63,8 @@ export interface CompanySettingsDto {
   postalAddress: string | null;
   departmentLabel: string | null;
   siteLocation: string | null;
+  logoUrl?: string | null;
+  backgroundImageUrl?: string | null;
   updatedAt: string | null;
 }
 

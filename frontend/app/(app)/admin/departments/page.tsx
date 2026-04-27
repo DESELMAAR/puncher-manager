@@ -169,7 +169,7 @@ export default function DepartmentsAdminPage() {
               {rows.map((d) => (
                 <tr
                   key={d.id}
-                  className="border-b border-zinc-100 dark:border-zinc-800"
+                  className="border-b border-zinc-100 shadow-[inset_0_0_0_2px_rgba(0,0,0,0)] transition hover:bg-zinc-50/70 hover:shadow-[inset_0_0_0_2px_rgba(16,185,129,0.35)] dark:border-zinc-800 dark:hover:bg-zinc-900/40 dark:hover:shadow-[inset_0_0_0_2px_rgba(16,185,129,0.25)]"
                 >
                   <td className="px-4 py-3 font-medium">{d.name}</td>
                   <td className="max-w-xs truncate px-4 py-3 text-zinc-600 dark:text-zinc-400">

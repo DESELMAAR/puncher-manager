@@ -10,4 +10,5 @@ public record DepartmentResponse(
     Instant createdAt,
     UUID adminId,
     Integer businessFirstStartHour,
-    Integer businessLastStartHour) {}
+    Integer businessLastStartHour,
+    Integer lateGraceMinutes) {}

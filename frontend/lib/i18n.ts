@@ -40,6 +40,7 @@ export type I18nKey =
   | "label.search"
   | "action.clear"
   | "action.exportCsv"
+  | "action.exportExcel"
   | "attendance.overview"
   | "attendance.range"
   | "attendance.noTeams"
@@ -93,6 +94,7 @@ const dict: Record<Language, Record<I18nKey, string>> = {
     "label.search": "Search",
     "action.clear": "Clear",
     "action.exportCsv": "Export CSV",
+    "action.exportExcel": "Export Excel",
     "attendance.overview": "Overview (all teams)",
     "attendance.range": "Range (up to 2 months)",
     "attendance.noTeams": "No teams available for your scope.",
@@ -145,6 +147,7 @@ const dict: Record<Language, Record<I18nKey, string>> = {
     "label.search": "Rechercher",
     "action.clear": "Effacer",
     "action.exportCsv": "Exporter CSV",
+    "action.exportExcel": "Exporter Excel",
     "attendance.overview": "Vue d’ensemble (toutes les équipes)",
     "attendance.range": "Période (jusqu’à 2 mois)",
     "attendance.noTeams": "Aucune équipe disponible dans votre périmètre.",
@@ -197,6 +200,7 @@ const dict: Record<Language, Record<I18nKey, string>> = {
     "label.search": "Buscar",
     "action.clear": "Limpiar",
     "action.exportCsv": "Exportar CSV",
+    "action.exportExcel": "Exportar Excel",
     "attendance.overview": "Resumen (todos los equipos)",
     "attendance.range": "Rango (hasta 2 meses)",
     "attendance.noTeams": "No hay equipos disponibles en tu alcance.",

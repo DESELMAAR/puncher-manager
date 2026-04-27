@@ -129,6 +129,7 @@ export interface DepartmentDto {
   adminId: string | null;
   businessFirstStartHour?: number | null;
   businessLastStartHour?: number | null;
+  lateGraceMinutes?: number | null;
 }
 
 export interface TeamDto {

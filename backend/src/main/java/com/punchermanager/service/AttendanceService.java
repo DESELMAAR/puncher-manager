@@ -9,6 +9,7 @@ import com.punchermanager.domain.User;
 import com.punchermanager.domain.UserRole;
 import com.punchermanager.domain.UserStatus;
 import com.punchermanager.repository.AttendanceRecordRepository;
+import com.punchermanager.repository.DepartmentRepository;
 import com.punchermanager.repository.PunchRepository;
 import com.punchermanager.repository.TeamRepository;
 import com.punchermanager.repository.UserRepository;
@@ -39,7 +40,7 @@ public class AttendanceService {
 
   private static final ZoneId ZONE = ZoneId.systemDefault();
   private static final DateTimeFormatter SCHEDULE_TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
-  private static final int LATE_GRACE_MINUTES = 10;
+  private static final int DEFAULT_LATE_GRACE_MINUTES = 10;
   /** Minutes before scheduled end considered too early for logout. */
   private static final int END_EARLY_TOLERANCE_MINUTES = 30;
   /** Minutes after scheduled end allowed before flagging late end. */
@@ -50,18 +51,21 @@ public class AttendanceService {
   private final PunchRepository punchRepository;
   private final UserRepository userRepository;
   private final TeamRepository teamRepository;
+  private final DepartmentRepository departmentRepository;
 
   public AttendanceService(
       AttendanceRecordRepository attendanceRecordRepository,
       PlanningService planningService,
       PunchRepository punchRepository,
       UserRepository userRepository,
-      TeamRepository teamRepository) {
+      TeamRepository teamRepository,
+      DepartmentRepository departmentRepository) {
     this.attendanceRecordRepository = attendanceRecordRepository;
     this.planningService = planningService;
     this.punchRepository = punchRepository;
     this.userRepository = userRepository;
     this.teamRepository = teamRepository;
+    this.departmentRepository = departmentRepository;
   }
 
   @Transactional
@@ -86,7 +90,8 @@ public class AttendanceService {
     LocalTime expected = plan.expectedStartTime();
 
     Instant expectedInstant = expected.atDate(day).atZone(ZONE).toInstant();
-    Instant latestAllowedStart = expectedInstant.plus(LATE_GRACE_MINUTES, ChronoUnit.MINUTES);
+    int graceMinutes = graceMinutesFor(employee);
+    Instant latestAllowedStart = expectedInstant.plus(graceMinutes, ChronoUnit.MINUTES);
     boolean late = workStart.getPunchedAt().isAfter(latestAllowedStart);
 
     AttendanceStatus status = late ? AttendanceStatus.LATE : AttendanceStatus.ON_TIME;
@@ -180,13 +185,16 @@ public class AttendanceService {
               .toList();
 
       DerivedAttendance derived =
-          att == null ? deriveFromPunchesIfPossible(u.getEmployeeId(), date, punchDtos, zone) : null;
+          att == null
+              ? deriveFromPunchesIfPossible(
+                  u.getEmployeeId(), date, punchDtos, zone, graceMinutesFor(u))
+              : null;
 
       Boolean scheduleOk = null;
       String scheduleNote = null;
       if (scheduleVsPlanCheck) {
         ScheduleVsPlanResult check =
-            verifyScheduleVsPunches(u.getEmployeeId(), date, punchDtos, zone);
+            verifyScheduleVsPunches(u.getEmployeeId(), date, punchDtos, zone, graceMinutesFor(u));
         scheduleOk = check.ok();
         scheduleNote = check.note();
       }
@@ -240,6 +248,60 @@ public class AttendanceService {
     assertCanViewTeam(requester, team);
 
     List<User> members = userRepository.findEmployeesByTeamId(teamId);
+    return usersAttendanceRange(members, from, to, requester, zone);
+  }
+
+  @Transactional(readOnly = true)
+  public List<AttendanceRowDto> departmentAttendanceRange(
+      UUID departmentId, LocalDate from, LocalDate to, User requester, ZoneId zone) {
+    if (from.isAfter(to)) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid date range");
+    }
+    long days = ChronoUnit.DAYS.between(from, to) + 1;
+    if (days > 62) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "Range too large (max 62 days)");
+    }
+
+    var dept =
+        departmentRepository
+            .findById(departmentId)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Department not found"));
+
+    switch (requester.getRole()) {
+      case SUPER_ADMIN, ADMIN -> {}
+      case DEPT_MANAGER, TEAM_LEADER -> {
+        if (requester.getDepartment() == null
+            || !requester.getDepartment().getId().equals(dept.getId())) {
+          throw new ApiException(HttpStatus.FORBIDDEN, "Department not in your scope");
+        }
+      }
+      default -> throw new ApiException(HttpStatus.FORBIDDEN, "Insufficient role");
+    }
+
+    List<User> members = userRepository.findEmployeesByDepartmentId(departmentId);
+    return usersAttendanceRange(members, from, to, requester, zone);
+  }
+
+  @Transactional(readOnly = true)
+  public List<AttendanceRowDto> allAttendanceRange(
+      LocalDate from, LocalDate to, User requester, ZoneId zone) {
+    if (requester.getRole() != UserRole.SUPER_ADMIN && requester.getRole() != UserRole.ADMIN) {
+      throw new ApiException(HttpStatus.FORBIDDEN, "Insufficient role");
+    }
+    if (from.isAfter(to)) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid date range");
+    }
+    long days = ChronoUnit.DAYS.between(from, to) + 1;
+    if (days > 62) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "Range too large (max 62 days)");
+    }
+    List<User> members =
+        userRepository.findAll().stream().filter(u -> u.getRole() == UserRole.EMPLOYEE).toList();
+    return usersAttendanceRange(members, from, to, requester, zone);
+  }
+
+  private List<AttendanceRowDto> usersAttendanceRange(
+      List<User> members, LocalDate from, LocalDate to, User requester, ZoneId zone) {
     List<UUID> userIds = members.stream().map(User::getId).toList();
     if (userIds.isEmpty()) {
       return List.of();
@@ -285,13 +347,16 @@ public class AttendanceService {
         List<PunchResponse> punchDtos = punchesByKey.getOrDefault(key, List.of());
 
         DerivedAttendance derived =
-            att == null ? deriveFromPunchesIfPossible(u.getEmployeeId(), day, punchDtos, zone) : null;
+            att == null
+                ? deriveFromPunchesIfPossible(
+                    u.getEmployeeId(), day, punchDtos, zone, graceMinutesFor(u))
+                : null;
 
         Boolean scheduleOk = null;
         String scheduleNote = null;
         if (scheduleVsPlanCheck) {
           ScheduleVsPlanResult check =
-              verifyScheduleVsPunches(u.getEmployeeId(), day, punchDtos, zone);
+              verifyScheduleVsPunches(u.getEmployeeId(), day, punchDtos, zone, graceMinutesFor(u));
           scheduleOk = check.ok();
           scheduleNote = check.note();
         }
@@ -337,7 +402,11 @@ public class AttendanceService {
    * - LATE if first WORK_START is after scheduled start
    */
   private DerivedAttendance deriveFromPunchesIfPossible(
-      String employeeId, LocalDate date, List<PunchResponse> sortedPunches, ZoneId zone) {
+      String employeeId,
+      LocalDate date,
+      List<PunchResponse> sortedPunches,
+      ZoneId zone,
+      int graceMinutes) {
     if (sortedPunches == null || sortedPunches.isEmpty()) return null;
     var planOpt = planningService.getPlannedDay(employeeId, date);
     if (planOpt.isEmpty()) return null;
@@ -352,12 +421,22 @@ public class AttendanceService {
     // Compare Instants to avoid local-time edge cases and keep behavior timezone-correct.
     Instant scheduledStart = expectedStart.atDate(date).atZone(zone).toInstant();
     long minutesDiff = ChronoUnit.MINUTES.between(scheduledStart, firstWorkStart.punchedAt());
-    boolean late = minutesDiff > 0;
+    boolean late = minutesDiff > graceMinutes;
     return new DerivedAttendance(
         late ? AttendanceStatus.LATE : AttendanceStatus.ON_TIME,
         expectedStart,
         actualStart,
         late ? (int) Math.max(0L, minutesDiff) : 0);
+  }
+
+  private static int graceMinutesFor(User employee) {
+    if (employee == null) return DEFAULT_LATE_GRACE_MINUTES;
+    if (employee.getDepartment() == null) return DEFAULT_LATE_GRACE_MINUTES;
+    Integer m = employee.getDepartment().getLateGraceMinutes();
+    if (m == null) return DEFAULT_LATE_GRACE_MINUTES;
+    if (m < 0) return 0;
+    if (m > 120) return 120;
+    return m;
   }
 
   @Transactional(readOnly = true)
@@ -432,7 +511,11 @@ public class AttendanceService {
    * PunchType#WORK_START} and last {@link PunchType#LOGOUT} for the calendar day.
    */
   private ScheduleVsPlanResult verifyScheduleVsPunches(
-      String employeeId, LocalDate date, List<PunchResponse> sortedPunches, ZoneId zone) {
+      String employeeId,
+      LocalDate date,
+      List<PunchResponse> sortedPunches,
+      ZoneId zone,
+      int graceMinutes) {
 
     var planOpt = planningService.getPlannedDay(employeeId, date);
 
@@ -470,7 +553,7 @@ public class AttendanceService {
 
     // Late only if punch is after scheduled start + grace; early / on-time / within grace are OK.
     Instant scheduledStart = expectedStart.atDate(date).atZone(zone).toInstant();
-    Instant latestAllowedStart = scheduledStart.plus(LATE_GRACE_MINUTES, ChronoUnit.MINUTES);
+    Instant latestAllowedStart = scheduledStart.plus(graceMinutes, ChronoUnit.MINUTES);
     if (firstWorkStart.punchedAt().isAfter(latestAllowedStart)) {
       return new ScheduleVsPlanResult(
           false,
@@ -479,7 +562,7 @@ public class AttendanceService {
               + " vs scheduled "
               + fmtTime(expectedStart)
               + " (+"
-              + LATE_GRACE_MINUTES
+              + graceMinutes
               + " min grace)");
     }
 

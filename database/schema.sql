@@ -10,7 +10,8 @@ CREATE TABLE departments (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   admin_id UUID NULL,
   business_first_start_hour INTEGER,
-  business_last_start_hour INTEGER
+  business_last_start_hour INTEGER,
+  late_grace_minutes INTEGER
 );
 
 CREATE TABLE users (

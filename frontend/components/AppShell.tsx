@@ -27,7 +27,7 @@ function backgroundClass(t: BackgroundTheme) {
       return "bg-violet-50 dark:bg-violet-950/35";
     case "DEFAULT":
     default:
-      return "bg-zinc-50 dark:bg-zinc-950";
+      return "bg-[rgb(211,218,217)] dark:bg-[#44444E]";
   }
 }
 

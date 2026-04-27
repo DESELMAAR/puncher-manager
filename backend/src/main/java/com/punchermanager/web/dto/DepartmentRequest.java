@@ -17,6 +17,9 @@ public class DepartmentRequest {
   /** Latest start-work hour (0-23). Optional. */
   private Integer businessLastStartHour;
 
+  /** Grace time (minutes) allowed after scheduled start before "late". Optional. */
+  private Integer lateGraceMinutes;
+
   public String getName() {
     return name;
   }
@@ -55,5 +58,13 @@ public class DepartmentRequest {
 
   public void setBusinessLastStartHour(Integer businessLastStartHour) {
     this.businessLastStartHour = businessLastStartHour;
+  }
+
+  public Integer getLateGraceMinutes() {
+    return lateGraceMinutes;
+  }
+
+  public void setLateGraceMinutes(Integer lateGraceMinutes) {
+    this.lateGraceMinutes = lateGraceMinutes;
   }
 }

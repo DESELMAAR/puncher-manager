@@ -2,10 +2,14 @@ package com.punchermanager.web.controller;
 
 import com.punchermanager.domain.User;
 import com.punchermanager.service.AttendanceService;
+import com.punchermanager.service.AttendanceExportService;
+import com.punchermanager.service.AttendanceExportService.Scope;
 import com.punchermanager.service.PunchService;
 import com.punchermanager.service.UserContextService;
 import com.punchermanager.web.dto.AttendanceOverviewGroupDto;
+import com.punchermanager.web.dto.AttendanceExportRequest;
 import com.punchermanager.web.dto.AttendanceRowDto;
+import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -20,20 +24,26 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @RestController
 @RequestMapping("/api/attendance")
 public class AttendanceController {
 
   private final AttendanceService attendanceService;
+  private final AttendanceExportService attendanceExportService;
   private final UserContextService userContextService;
 
   public AttendanceController(
-      AttendanceService attendanceService, UserContextService userContextService) {
+      AttendanceService attendanceService,
+      AttendanceExportService attendanceExportService,
+      UserContextService userContextService) {
     this.attendanceService = attendanceService;
+    this.attendanceExportService = attendanceExportService;
     this.userContextService = userContextService;
   }
 
@@ -124,6 +134,94 @@ public class AttendanceController {
                 .build()
                 .toString())
         .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+        .body(bytes);
+  }
+
+  @GetMapping(
+      value = "/export.xlsx",
+      produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','DEPT_MANAGER','TEAM_LEADER')")
+  public ResponseEntity<byte[]> exportExcel(
+      HttpServletRequest http,
+      @RequestParam(required = false) Scope scope,
+      @RequestParam(required = false) UUID departmentId,
+      @RequestParam(required = false) UUID teamId,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+    User user = userContextService.requireCurrentUser(http);
+    ZoneId zone = PunchService.resolveClientZone(http.getHeader("X-Client-Timezone"));
+
+    Scope s = scope != null ? scope : Scope.TEAM;
+    LocalDate f;
+    LocalDate t;
+    if (from != null || to != null) {
+      f = from != null ? from : to;
+      t = to != null ? to : from;
+    } else {
+      if (date == null) {
+        throw new com.punchermanager.web.exception.ApiException(
+            org.springframework.http.HttpStatus.BAD_REQUEST, "date is required");
+      }
+      f = date;
+      t = date;
+    }
+
+    byte[] bytes =
+        attendanceExportService.exportXlsx(s, departmentId, teamId, f, t, null, user, zone);
+    String filename = "attendance-" + s.name().toLowerCase() + "-" + f + "-to-" + t + ".xlsx";
+    return ResponseEntity.ok()
+        .header(
+            HttpHeaders.CONTENT_DISPOSITION,
+            ContentDisposition.attachment().filename(filename).build().toString())
+        .contentType(
+            MediaType.parseMediaType(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+        .body(bytes);
+  }
+
+  @PostMapping(
+      value = "/export.xlsx",
+      produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','DEPT_MANAGER','TEAM_LEADER')")
+  public ResponseEntity<byte[]> exportExcelPost(
+      HttpServletRequest http, @Valid @RequestBody AttendanceExportRequest body) {
+    User user = userContextService.requireCurrentUser(http);
+    ZoneId zone = PunchService.resolveClientZone(http.getHeader("X-Client-Timezone"));
+
+    Scope s = body.getScope() != null ? body.getScope() : Scope.TEAM;
+    LocalDate f;
+    LocalDate t;
+    if (body.getFrom() != null || body.getTo() != null) {
+      f = body.getFrom() != null ? body.getFrom() : body.getTo();
+      t = body.getTo() != null ? body.getTo() : body.getFrom();
+    } else {
+      if (body.getDate() == null) {
+        throw new com.punchermanager.web.exception.ApiException(
+            org.springframework.http.HttpStatus.BAD_REQUEST, "date is required");
+      }
+      f = body.getDate();
+      t = body.getDate();
+    }
+
+    byte[] bytes =
+        attendanceExportService.exportXlsx(
+            s,
+            body.getDepartmentId(),
+            body.getTeamId(),
+            f,
+            t,
+            body.getFilterUserIds(),
+            user,
+            zone);
+    String filename = "attendance-" + s.name().toLowerCase() + "-" + f + "-to-" + t + ".xlsx";
+    return ResponseEntity.ok()
+        .header(
+            HttpHeaders.CONTENT_DISPOSITION,
+            ContentDisposition.attachment().filename(filename).build().toString())
+        .contentType(
+            MediaType.parseMediaType(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
         .body(bytes);
   }
 

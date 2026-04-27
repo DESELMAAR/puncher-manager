@@ -44,4 +44,13 @@ public interface UserRepository extends JpaRepository<User, UUID> {
           + "left join fetch d.admin "
           + "where t.id = :teamId and u.role = 'EMPLOYEE'")
   List<User> findEmployeesByTeamId(@Param("teamId") UUID teamId);
+
+  @Query(
+      "select u from User u "
+          + "join fetch u.team t "
+          + "join fetch u.department d "
+          + "left join fetch t.teamLeader "
+          + "left join fetch d.admin "
+          + "where d.id = :departmentId and u.role = 'EMPLOYEE'")
+  List<User> findEmployeesByDepartmentId(@Param("departmentId") UUID departmentId);
 }

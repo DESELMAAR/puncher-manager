@@ -38,6 +38,7 @@ public class DepartmentService {
     d.setDescription(req.getDescription());
     d.setBusinessFirstStartHour(req.getBusinessFirstStartHour());
     d.setBusinessLastStartHour(req.getBusinessLastStartHour());
+    d.setLateGraceMinutes(req.getLateGraceMinutes());
     if (req.getAdminId() != null) {
       User admin =
           userRepository
@@ -69,6 +70,7 @@ public class DepartmentService {
     d.setDescription(req.getDescription());
     d.setBusinessFirstStartHour(req.getBusinessFirstStartHour());
     d.setBusinessLastStartHour(req.getBusinessLastStartHour());
+    d.setLateGraceMinutes(req.getLateGraceMinutes());
     if (req.getAdminId() != null) {
       User admin =
           userRepository
@@ -104,6 +106,32 @@ public class DepartmentService {
         d.getCreatedAt(),
         d.getAdmin() != null ? d.getAdmin().getId() : null,
         d.getBusinessFirstStartHour(),
-        d.getBusinessLastStartHour());
+        d.getBusinessLastStartHour(),
+        d.getLateGraceMinutes());
+  }
+
+  @Transactional
+  public DepartmentResponse updateLateGraceMinutes(UUID id, Integer minutes, User requester) {
+    if (minutes != null && (minutes < 0 || minutes > 120)) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "Grace minutes must be between 0 and 120");
+    }
+    Department d =
+        departmentRepository
+            .findById(id)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Department not found"));
+
+    switch (requester.getRole()) {
+      case SUPER_ADMIN, ADMIN -> {}
+      case DEPT_MANAGER -> {
+        if (requester.getDepartment() == null
+            || !requester.getDepartment().getId().equals(d.getId())) {
+          throw new ApiException(HttpStatus.FORBIDDEN, "Not your department");
+        }
+      }
+      default -> throw new ApiException(HttpStatus.FORBIDDEN, "Insufficient role");
+    }
+
+    d.setLateGraceMinutes(minutes);
+    return toResponse(departmentRepository.save(d));
   }
 }

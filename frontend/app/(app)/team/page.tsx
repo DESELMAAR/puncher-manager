@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { extractApiMessage } from "@/lib/errors";
 import type {
   AttendanceOverviewGroupDto,
   AttendanceRow,
@@ -152,10 +154,12 @@ function PunchBadges({
   punches,
   showTime,
   indentPx,
+  showDurations,
 }: {
   punches: AttendanceRow["punches"];
   showTime: boolean;
   indentPx?: number;
+  showDurations?: boolean;
 }) {
   const firstByType = useMemo(() => {
     const m = new Map<string, string>();
@@ -186,6 +190,13 @@ function PunchBadges({
   }
 
   if (!punches || punches.length === 0) return <span className="text-zinc-500">—</span>;
+
+  const workMin = minutesBetween(firstByType.get("WORK_START"), firstByType.get("LOGOUT"));
+  const lunchMin = minutesBetween(firstByType.get("LUNCH_START"), firstByType.get("LUNCH_END"));
+  const break1Min = minutesBetween(firstByType.get("BREAK1_START"), firstByType.get("BREAK1_END"));
+  const break2Min = minutesBetween(firstByType.get("BREAK2_START"), firstByType.get("BREAK2_END"));
+  const breaksMin =
+    break1Min != null || break2Min != null ? (break1Min ?? 0) + (break2Min ?? 0) : null;
 
   return (
     <div className="flex flex-wrap gap-1.5" style={indentPx ? { marginLeft: indentPx } : undefined}>
@@ -284,8 +295,38 @@ function PunchBadges({
           )}
         </span>
       )}
+
+      {showTime && showDurations && (
+        <>
+          <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2 py-0.5 font-mono text-[11px] text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200">
+            WORK <span className="ml-1 opacity-70">{fmtMinutes(workMin)}</span>
+          </span>
+          <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2 py-0.5 font-mono text-[11px] text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200">
+            LUNCH <span className="ml-1 opacity-70">{fmtMinutes(lunchMin)}</span>
+          </span>
+          <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2 py-0.5 font-mono text-[11px] text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200">
+            BREAKS <span className="ml-1 opacity-70">{fmtMinutes(breaksMin)}</span>
+          </span>
+        </>
+      )}
     </div>
   );
+}
+
+function minutesBetween(startIso: string | null | undefined, endIso: string | null | undefined): number | null {
+  if (!startIso || !endIso) return null;
+  const s = new Date(startIso).getTime();
+  const e = new Date(endIso).getTime();
+  if (!Number.isFinite(s) || !Number.isFinite(e) || e < s) return null;
+  return Math.round((e - s) / 60000);
+}
+
+function fmtMinutes(totalMin: number | null): string {
+  if (totalMin == null) return "—";
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h <= 0) return `${m}m`;
+  return m ? `${h}h ${m}m` : `${h}h`;
 }
 
 export default function TeamPage() {
@@ -314,6 +355,7 @@ export default function TeamPage() {
   const [rows, setRows] = useState<AttendanceRow[]>([]);
   const [overviewMode, setOverviewMode] = useState(false);
   const [overview, setOverview] = useState<AttendanceOverviewGroupDto[]>([]);
+  const [lateGraceMinutesInput, setLateGraceMinutesInput] = useState<string>("");
 
   const loadTeamsForDepartment = useCallback(async (deptId: string) => {
     const { data } = await api.get<TeamDto[]>(`/api/teams/department/${deptId}`);
@@ -334,7 +376,6 @@ export default function TeamPage() {
       }
 
       if (role === "DEPT_MANAGER") {
-        setDepartments([]);
         if (!departmentId) {
           setTeams([]);
           setSelectedTeam(null);
@@ -343,6 +384,14 @@ export default function TeamPage() {
         }
         setSelectedDeptId(departmentId);
         try {
+          const { data: depts } = await api.get<DepartmentDto[]>("/api/departments");
+          if (cancelled) return;
+          setDepartments(depts);
+          const myDept = depts.find((d) => d.id === departmentId);
+          setLateGraceMinutesInput(
+            myDept?.lateGraceMinutes != null ? String(myDept.lateGraceMinutes) : "",
+          );
+
           const { data } = await api.get<TeamDto[]>(`/api/teams/department/${departmentId}`);
           if (cancelled) return;
           const mapped = data.map((t) => ({ id: t.id, name: t.name }));
@@ -367,6 +416,10 @@ export default function TeamPage() {
             depts[0]?.id ??
             null;
           setSelectedDeptId(initial);
+          const deptForGrace = depts.find((d) => d.id === initial);
+          setLateGraceMinutesInput(
+            deptForGrace?.lateGraceMinutes != null ? String(deptForGrace.lateGraceMinutes) : "",
+          );
           if (initial) {
             const { data: teamList } = await api.get<TeamDto[]>(
               `/api/teams/department/${initial}`,
@@ -403,10 +456,39 @@ export default function TeamPage() {
   async function onDepartmentChange(deptId: string) {
     setSelectedDeptId(deptId);
     try {
+      const dept = departments.find((d) => d.id === deptId);
+      setLateGraceMinutesInput(dept?.lateGraceMinutes != null ? String(dept.lateGraceMinutes) : "");
       await loadTeamsForDepartment(deptId);
     } catch {
       setTeams([]);
       setSelectedTeam(null);
+    }
+  }
+
+  const canEditLateGrace =
+    role === "SUPER_ADMIN" || role === "ADMIN" || role === "DEPT_MANAGER";
+
+  async function saveLateGraceMinutes() {
+    if (!canEditLateGrace) return;
+    const deptId = selectedDeptId ?? departmentId ?? "";
+    if (!deptId) return;
+    const v = lateGraceMinutesInput.trim();
+    const minutes = v === "" ? null : Number(v);
+    if (minutes != null && (!Number.isFinite(minutes) || minutes < 0 || minutes > 120)) {
+      toast.error("Grace minutes must be between 0 and 120");
+      return;
+    }
+    try {
+      const { data } = await api.put<DepartmentDto>(`/api/departments/${deptId}/grace`, {
+        lateGraceMinutes: minutes,
+      });
+      setDepartments((prev) => prev.map((d) => (d.id === deptId ? { ...d, ...data } : d)));
+      setLateGraceMinutesInput(
+        data.lateGraceMinutes != null ? String(data.lateGraceMinutes) : "",
+      );
+      toast.success("Grace time updated");
+    } catch (e) {
+      toast.error(extractApiMessage(e));
     }
   }
 
@@ -454,6 +536,61 @@ export default function TeamPage() {
         a.click();
       })
       .catch(() => window.open(url, "_blank", "noopener"));
+  }
+
+  const canExportAllDepartments = role === "SUPER_ADMIN" || role === "ADMIN";
+  const canExportDepartment = role === "SUPER_ADMIN" || role === "ADMIN" || role === "DEPT_MANAGER" || role === "TEAM_LEADER";
+  const canExportTeam = role === "SUPER_ADMIN" || role === "ADMIN" || role === "DEPT_MANAGER" || role === "TEAM_LEADER";
+
+  const [exportScope, setExportScope] = useState<"ALL" | "DEPARTMENT" | "TEAM">("TEAM");
+
+  function downloadBlob(blob: Blob, fallbackName: string, contentDisposition?: string | null) {
+    let name = fallbackName;
+    if (contentDisposition) {
+      const m = /filename=\"?([^\";]+)\"?/i.exec(contentDisposition);
+      if (m?.[1]) name = m[1];
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 30_000);
+  }
+
+  async function exportExcel() {
+    const deptId = selectedDeptId ?? departmentId ?? "";
+    const filterUserIds = Array.from(
+      new Set(
+        (overviewMode ? grouped.flatMap((g) => g.rows) : filteredRows).map((r) => r.userId),
+      ),
+    );
+
+    const body: Record<string, unknown> = {
+      scope: exportScope,
+      filterUserIds,
+    };
+    if (rangeMode) {
+      body.from = from;
+      body.to = to;
+    } else {
+      body.date = date;
+    }
+    if (exportScope === "TEAM") {
+      if (!selectedTeam) return;
+      body.teamId = selectedTeam;
+    } else if (exportScope === "DEPARTMENT") {
+      if (!deptId) return;
+      body.departmentId = deptId;
+    }
+
+    const res = await api.post<Blob>("/api/attendance/export.xlsx", body, {
+      responseType: "blob",
+    });
+    downloadBlob(
+      res.data,
+      `attendance-${exportScope.toLowerCase()}-${rangeMode ? `${from}-to-${to}` : date}.xlsx`,
+      (res.headers as Record<string, string | undefined>)["content-disposition"] ?? null,
+    );
   }
 
   const showDepartmentPicker =
@@ -606,6 +743,27 @@ export default function TeamPage() {
             </>
           )}
         </label>
+        {canEditLateGrace && (selectedDeptId ?? departmentId) && (
+          <span className="inline-flex flex-wrap items-center gap-2 text-sm">
+            <span>Grace (min)</span>
+            <input
+              type="number"
+              min={0}
+              max={120}
+              value={lateGraceMinutesInput}
+              onChange={(e) => setLateGraceMinutesInput(e.target.value)}
+              className="w-20 rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600 dark:bg-zinc-800"
+              placeholder="10"
+            />
+            <button
+              type="button"
+              onClick={() => void saveLateGraceMinutes()}
+              className="rounded-lg border border-zinc-300 px-3 py-1 text-sm dark:border-zinc-600"
+            >
+              Save
+            </button>
+          </span>
+        )}
         <button
           type="button"
           onClick={exportCsv}
@@ -613,6 +771,30 @@ export default function TeamPage() {
           className="rounded-lg border border-zinc-300 px-3 py-1 text-sm dark:border-zinc-600"
         >
           {t("action.exportCsv")}
+        </button>
+        <label className="text-sm">
+          <span className="mr-2">Export</span>
+          <select
+            value={exportScope}
+            onChange={(e) => setExportScope(e.target.value as "ALL" | "DEPARTMENT" | "TEAM")}
+            className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600 dark:bg-zinc-800"
+          >
+            {canExportTeam && <option value="TEAM">Team</option>}
+            {canExportDepartment && <option value="DEPARTMENT">Department</option>}
+            {canExportAllDepartments && <option value="ALL">All departments</option>}
+          </select>
+        </label>
+        <button
+          type="button"
+          onClick={() => void exportExcel()}
+          disabled={
+            (exportScope === "TEAM" && !selectedTeam) ||
+            (exportScope === "DEPARTMENT" && !(selectedDeptId ?? departmentId)) ||
+            (exportScope === "ALL" && !canExportAllDepartments)
+          }
+          className="rounded-lg border border-zinc-300 px-3 py-1 text-sm dark:border-zinc-600"
+        >
+          {t("action.exportExcel")}
         </button>
       </div>
 
@@ -672,7 +854,6 @@ export default function TeamPage() {
                     {t("table.schedule")}
                   </th>
                 )}
-                <th className="p-2">{t("table.deptManager")}</th>
                 <th className="p-2">{t("table.teamLeader")}</th>
                 <th className="p-2">
                   <div className="flex items-center justify-between gap-2">
@@ -697,7 +878,8 @@ export default function TeamPage() {
             <tbody>
               {filteredRows.map((r) => {
                 const rowKey = `${r.userId}-${r.recordDate}`;
-                const expanded = expandAll || openRow === rowKey;
+                const manuallyOpen = openRow === rowKey;
+                const expanded = expandAll || manuallyOpen;
                 const punchesExpanded = openPunchTimes.has(rowKey);
                 const startH = startHourForIndent(r);
                 const minH = deptFirstStartHour;
@@ -709,7 +891,7 @@ export default function TeamPage() {
                     className={`border-t border-zinc-200 transition-colors dark:border-zinc-800 hover:bg-zinc-50/70 dark:hover:bg-zinc-900/40 ${
                       rangeMode ? dayColorClass(r.recordDate) : ""
                     } ${
-                      expanded
+                      manuallyOpen
                         ? rangeMode
                           ? "ring-2 ring-inset ring-emerald-400/60"
                           : "bg-emerald-50/70 ring-2 ring-inset ring-emerald-400/50 dark:bg-emerald-950/20"
@@ -772,18 +954,6 @@ export default function TeamPage() {
                         </td>
                       )}
                       <td className="p-2 text-zinc-700 dark:text-zinc-300">
-                        {r.deptManagerName ?? "—"}
-                        {expanded && r.deptManagerEmail && (
-                          <div className="mt-1 flex items-center gap-2 font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
-                            <span>{r.deptManagerEmail}</span>
-                            <CopyButton
-                              value={r.deptManagerEmail}
-                              title="Copy dept manager email"
-                            />
-                          </div>
-                        )}
-                      </td>
-                      <td className="p-2 text-zinc-700 dark:text-zinc-300">
                         {r.teamLeaderName ?? "—"}
                         {expanded && r.teamLeaderEmail && (
                           <div className="mt-1 flex items-center gap-2 font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
@@ -802,6 +972,7 @@ export default function TeamPage() {
                               punches={r.punches}
                               showTime={expanded || punchesExpanded || expandAllPunchTimes}
                               indentPx={indentPx}
+                              showDurations={punchesExpanded || expandAllPunchTimes}
                             />
                           </div>
                           <button
@@ -858,8 +1029,7 @@ export default function TeamPage() {
                 </div>
               </div>
               <div className="border-t border-zinc-200 bg-white/40 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-black/5 dark:text-zinc-300">
-                {t("table.deptManager")}: <span className="font-medium">{g.rows[0]?.deptManagerName ?? "—"}</span>{" "}
-                • {t("table.teamLeader")}:{" "}
+                {t("table.teamLeader")}:{" "}
                 <span className="font-medium">{g.rows[0]?.teamLeaderName ?? "—"}</span>
               </div>
               <table className="min-w-full text-left text-sm">
@@ -891,7 +1061,6 @@ export default function TeamPage() {
                     </th>
                     <th className="p-2">Status</th>
                     {showScheduleVsPlan && <th className="p-2">Schedule</th>}
-                    <th className="p-2">{t("table.deptManager")}</th>
                     <th className="p-2">{t("table.teamLeader")}</th>
                     <th className="p-2">
                       <div className="flex items-center justify-between gap-2">
@@ -916,7 +1085,8 @@ export default function TeamPage() {
                 <tbody>
                   {g.rows.map((r) => {
                     const rowKey = `${g.teamId}-${r.userId}-${r.recordDate}`;
-                    const expanded = expandAll || openRow === rowKey;
+                    const manuallyOpen = openRow === rowKey;
+                    const expanded = expandAll || manuallyOpen;
                     const punchesExpanded = openPunchTimes.has(rowKey);
                     const startH = startHourForIndent(r);
                     const minH =
@@ -931,7 +1101,7 @@ export default function TeamPage() {
                       className={`border-t border-zinc-200 transition-colors dark:border-zinc-800 hover:bg-zinc-50/70 dark:hover:bg-zinc-900/40 ${
                         rangeMode ? dayColorClass(r.recordDate) : ""
                       } ${
-                        expanded
+                        manuallyOpen
                           ? rangeMode
                             ? "ring-2 ring-inset ring-emerald-400/60"
                             : "bg-emerald-50/70 ring-2 ring-inset ring-emerald-400/50 dark:bg-emerald-950/20"
@@ -994,18 +1164,6 @@ export default function TeamPage() {
                         </td>
                       )}
                       <td className="p-2 text-zinc-700 dark:text-zinc-300">
-                        <div>{r.deptManagerName ?? "—"}</div>
-                        {expanded && r.deptManagerEmail && (
-                          <div className="mt-1 flex items-center gap-2 font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
-                            <span>{r.deptManagerEmail}</span>
-                            <CopyButton
-                              value={r.deptManagerEmail}
-                              title="Copy dept manager email"
-                            />
-                          </div>
-                        )}
-                      </td>
-                      <td className="p-2 text-zinc-700 dark:text-zinc-300">
                         <div>{r.teamLeaderName ?? "—"}</div>
                         {expanded && r.teamLeaderEmail && (
                           <div className="mt-1 flex items-center gap-2 font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
@@ -1024,6 +1182,7 @@ export default function TeamPage() {
                               punches={r.punches}
                               showTime={expanded || punchesExpanded || expandAllPunchTimes}
                               indentPx={indentPx}
+                          showDurations={punchesExpanded || expandAllPunchTimes}
                             />
                           </div>
                           <button

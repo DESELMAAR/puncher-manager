@@ -43,6 +43,10 @@ public class Department {
   @Column(name = "business_last_start_hour")
   private Integer businessLastStartHour;
 
+  /** Grace time (minutes) allowed after scheduled start before "late". */
+  @Column(name = "late_grace_minutes")
+  private Integer lateGraceMinutes;
+
   public Department() {}
 
   public UUID getId() {
@@ -99,5 +103,13 @@ public class Department {
 
   public void setBusinessLastStartHour(Integer businessLastStartHour) {
     this.businessLastStartHour = businessLastStartHour;
+  }
+
+  public Integer getLateGraceMinutes() {
+    return lateGraceMinutes;
+  }
+
+  public void setLateGraceMinutes(Integer lateGraceMinutes) {
+    this.lateGraceMinutes = lateGraceMinutes;
   }
 }

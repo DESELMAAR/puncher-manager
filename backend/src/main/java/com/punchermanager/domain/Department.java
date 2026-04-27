@@ -35,6 +35,14 @@ public class Department {
   @JoinColumn(name = "admin_id")
   private User admin;
 
+  /** Business earliest start-work hour (0-23), used for attendance indentation. */
+  @Column(name = "business_first_start_hour")
+  private Integer businessFirstStartHour;
+
+  /** Business latest start-work hour (0-23), used for attendance indentation. */
+  @Column(name = "business_last_start_hour")
+  private Integer businessLastStartHour;
+
   public Department() {}
 
   public UUID getId() {
@@ -75,5 +83,21 @@ public class Department {
 
   public void setAdmin(User admin) {
     this.admin = admin;
+  }
+
+  public Integer getBusinessFirstStartHour() {
+    return businessFirstStartHour;
+  }
+
+  public void setBusinessFirstStartHour(Integer businessFirstStartHour) {
+    this.businessFirstStartHour = businessFirstStartHour;
+  }
+
+  public Integer getBusinessLastStartHour() {
+    return businessLastStartHour;
+  }
+
+  public void setBusinessLastStartHour(Integer businessLastStartHour) {
+    this.businessLastStartHour = businessLastStartHour;
   }
 }

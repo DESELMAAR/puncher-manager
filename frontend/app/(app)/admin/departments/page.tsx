@@ -17,7 +17,13 @@ export default function DepartmentsAdminPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<DepartmentDto | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DepartmentDto | null>(null);
-  const [form, setForm] = useState({ name: "", description: "", adminId: "" });
+  const [form, setForm] = useState({
+    name: "",
+    description: "",
+    adminId: "",
+    businessFirstStartHour: "",
+    businessLastStartHour: "",
+  });
 
   const deptManagers = useMemo(
     () => users.filter((u) => u.role === "DEPT_MANAGER"),
@@ -57,9 +63,19 @@ export default function DepartmentsAdminPage() {
         name: editing.name,
         description: editing.description ?? "",
         adminId: editing.adminId ?? "",
+        businessFirstStartHour:
+          editing.businessFirstStartHour != null ? String(editing.businessFirstStartHour) : "",
+        businessLastStartHour:
+          editing.businessLastStartHour != null ? String(editing.businessLastStartHour) : "",
       });
     } else {
-      setForm({ name: "", description: "", adminId: "" });
+      setForm({
+        name: "",
+        description: "",
+        adminId: "",
+        businessFirstStartHour: "",
+        businessLastStartHour: "",
+      });
     }
   }, [modalOpen, editing]);
 
@@ -72,6 +88,10 @@ export default function DepartmentsAdminPage() {
       name: form.name.trim(),
       description: form.description.trim() || null,
       adminId: form.adminId || null,
+      businessFirstStartHour:
+        form.businessFirstStartHour.trim() === "" ? null : Number(form.businessFirstStartHour),
+      businessLastStartHour:
+        form.businessLastStartHour.trim() === "" ? null : Number(form.businessLastStartHour),
     };
     try {
       if (editing) {
@@ -241,6 +261,37 @@ export default function DepartmentsAdminPage() {
                   ))}
                 </select>
               </label>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block text-sm font-medium">
+                  Business first start hour (0–23)
+                  <input
+                    type="number"
+                    min={0}
+                    max={23}
+                    className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-950"
+                    value={form.businessFirstStartHour}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, businessFirstStartHour: e.target.value }))
+                    }
+                    placeholder="9"
+                  />
+                </label>
+                <label className="block text-sm font-medium">
+                  Business last start hour (0–23)
+                  <input
+                    type="number"
+                    min={0}
+                    max={23}
+                    className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-950"
+                    value={form.businessLastStartHour}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, businessLastStartHour: e.target.value }))
+                    }
+                    placeholder="12"
+                  />
+                </label>
+              </div>
             </div>
             <div className="mt-6 flex justify-end gap-2">
               <button

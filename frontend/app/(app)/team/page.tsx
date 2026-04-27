@@ -125,12 +125,37 @@ function fmtPunchTime(iso: string) {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+function parseHourFromTimeString(t: string | null | undefined): number | null {
+  if (!t) return null;
+  // Accept "HH:mm" or "HH:mm:ss"
+  const hh = Number.parseInt(t.slice(0, 2), 10);
+  return Number.isFinite(hh) ? hh : null;
+}
+
+function startHourForIndent(row: AttendanceRow): number | null {
+  const h = parseHourFromTimeString(row.expectedStart);
+  if (h != null) return h;
+  const ws = row.punches?.find((p) => p.type === "WORK_START")?.punchedAt;
+  if (!ws) return null;
+  const d = new Date(ws);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.getHours();
+}
+
+function clampHour(h: number): number {
+  if (h < 0) return 0;
+  if (h > 23) return 23;
+  return h;
+}
+
 function PunchBadges({
   punches,
   showTime,
+  indentPx,
 }: {
   punches: AttendanceRow["punches"];
   showTime: boolean;
+  indentPx?: number;
 }) {
   const firstByType = useMemo(() => {
     const m = new Map<string, string>();
@@ -163,7 +188,7 @@ function PunchBadges({
   if (!punches || punches.length === 0) return <span className="text-zinc-500">—</span>;
 
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="flex flex-wrap gap-1.5" style={indentPx ? { marginLeft: indentPx } : undefined}>
       {/* WORK_START */}
       {firstByType.get("WORK_START") && (
         <span
@@ -456,6 +481,25 @@ export default function TeamPage() {
       .filter((g) => g.rows.length > 0);
   }, [overview, matches, q]);
 
+  const deptFirstStartHour = useMemo(() => {
+    // Prefer configured business hour if present (single-team view has a selected department).
+    const deptId = selectedDeptId ?? departmentId ?? null;
+    if (!deptId) return null;
+    const d = departments.find((x) => x.id === deptId);
+    const h = d?.businessFirstStartHour;
+    return typeof h === "number" ? clampHour(h) : null;
+  }, [departments, selectedDeptId, departmentId]);
+
+  const deptFirstStartHourByDeptId = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const d of departments) {
+      if (typeof d.businessFirstStartHour === "number") {
+        m.set(d.id, clampHour(d.businessFirstStartHour));
+      }
+    }
+    return m;
+  }, [departments]);
+
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">{t("team.title")}</h1>
@@ -655,11 +699,21 @@ export default function TeamPage() {
                 const rowKey = `${r.userId}-${r.recordDate}`;
                 const expanded = expandAll || openRow === rowKey;
                 const punchesExpanded = openPunchTimes.has(rowKey);
+                const startH = startHourForIndent(r);
+                const minH = deptFirstStartHour;
+                const indentPx =
+                  startH != null && minH != null && startH > minH ? (startH - minH) * 20 : 0;
                 return (
                   <tr
                     key={rowKey}
-                    className={`border-t border-zinc-200 dark:border-zinc-800 ${
+                    className={`border-t border-zinc-200 transition-colors dark:border-zinc-800 hover:bg-zinc-50/70 dark:hover:bg-zinc-900/40 ${
                       rangeMode ? dayColorClass(r.recordDate) : ""
+                    } ${
+                      expanded
+                        ? rangeMode
+                          ? "ring-2 ring-inset ring-emerald-400/60"
+                          : "bg-emerald-50/70 ring-2 ring-inset ring-emerald-400/50 dark:bg-emerald-950/20"
+                        : ""
                     }`}
                   >
                       {rangeMode && (
@@ -747,6 +801,7 @@ export default function TeamPage() {
                             <PunchBadges
                               punches={r.punches}
                               showTime={expanded || punchesExpanded || expandAllPunchTimes}
+                              indentPx={indentPx}
                             />
                           </div>
                           <button
@@ -863,11 +918,24 @@ export default function TeamPage() {
                     const rowKey = `${g.teamId}-${r.userId}-${r.recordDate}`;
                     const expanded = expandAll || openRow === rowKey;
                     const punchesExpanded = openPunchTimes.has(rowKey);
+                    const startH = startHourForIndent(r);
+                    const minH =
+                      deptFirstStartHourByDeptId.get(g.departmentId) ??
+                      deptFirstStartHour ??
+                      null;
+                    const indentPx =
+                      startH != null && minH != null && startH > minH ? (startH - minH) * 20 : 0;
                     return (
                     <tr
                       key={rowKey}
-                      className={`border-t border-zinc-200 dark:border-zinc-800 ${
+                      className={`border-t border-zinc-200 transition-colors dark:border-zinc-800 hover:bg-zinc-50/70 dark:hover:bg-zinc-900/40 ${
                         rangeMode ? dayColorClass(r.recordDate) : ""
+                      } ${
+                        expanded
+                          ? rangeMode
+                            ? "ring-2 ring-inset ring-emerald-400/60"
+                            : "bg-emerald-50/70 ring-2 ring-inset ring-emerald-400/50 dark:bg-emerald-950/20"
+                          : ""
                       }`}
                     >
                       {rangeMode && (
@@ -955,6 +1023,7 @@ export default function TeamPage() {
                             <PunchBadges
                               punches={r.punches}
                               showTime={expanded || punchesExpanded || expandAllPunchTimes}
+                              indentPx={indentPx}
                             />
                           </div>
                           <button

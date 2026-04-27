@@ -4,4 +4,10 @@ import java.time.Instant;
 import java.util.UUID;
 
 public record DepartmentResponse(
-    UUID id, String name, String description, Instant createdAt, UUID adminId) {}
+    UUID id,
+    String name,
+    String description,
+    Instant createdAt,
+    UUID adminId,
+    Integer businessFirstStartHour,
+    Integer businessLastStartHour) {}

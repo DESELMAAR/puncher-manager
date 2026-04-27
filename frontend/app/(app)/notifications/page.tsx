@@ -2,9 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
-import type { NotificationDto, TeamDto, WeeklyScheduleResponse } from "@/lib/types";
+import type {
+  DepartmentDto,
+  NotificationDto,
+  TeamDto,
+  UserDto,
+  WeeklyScheduleResponse,
+} from "@/lib/types";
 import { useAuthStore } from "@/store/authStore";
 import { ScheduleConfirmModal } from "@/components/schedule/ScheduleConfirmModal";
+
+type TargetType = "ALL_EMPLOYEES" | "DEPARTMENT" | "TEAM" | "EMPLOYEE";
 
 export default function NotificationsPage() {
   const token = useAuthStore((s) => s.token);
@@ -22,6 +30,11 @@ export default function NotificationsPage() {
   const [schedulePayload, setSchedulePayload] = useState<WeeklyScheduleResponse | null>(null);
   const [teams, setTeams] = useState<TeamDto[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string>("");
+  const [targetType, setTargetType] = useState<TargetType>("TEAM");
+  const [departments, setDepartments] = useState<DepartmentDto[]>([]);
+  const [selectedDeptId, setSelectedDeptId] = useState<string>("");
+  const [employees, setEmployees] = useState<UserDto[]>([]);
+  const [selectedEmployeeUserId, setSelectedEmployeeUserId] = useState<string>("");
 
   const unreadScheduleConfirm = useMemo(() => {
     return items.find((n) => !n.read && n.type === "SCHEDULE_CONFIRM" && n.payloadJson);
@@ -35,6 +48,25 @@ export default function NotificationsPage() {
   useEffect(() => {
     void load();
   }, []);
+
+  useEffect(() => {
+    // SUPER_ADMIN / ADMIN can target across the org; load lists once.
+    const isSuper = role === "SUPER_ADMIN" || role === "ADMIN";
+    if (!isSuper) return;
+    void (async () => {
+      try {
+        const [dRes, uRes] = await Promise.all([
+          api.get<DepartmentDto[]>("/api/departments"),
+          api.get<UserDto[]>("/api/users"),
+        ]);
+        setDepartments(dRes.data);
+        setEmployees(uRes.data.filter((u) => u.role === "EMPLOYEE"));
+      } catch {
+        setDepartments([]);
+        setEmployees([]);
+      }
+    })();
+  }, [role]);
 
   useEffect(() => {
     // Load team choices depending on role scope.
@@ -65,7 +97,7 @@ export default function NotificationsPage() {
       return;
     }
     // SUPER_ADMIN / ADMIN: allow selecting any team by first loading all departments' teams is bigger;
-    // keep it simple: require choosing a team from current department scope if present, otherwise none.
+    // keep it simple: default to departmentId if present, otherwise leave blank (SUPER/ADMIN can also use other target types).
     if (departmentId) {
       void (async () => {
         try {
@@ -82,6 +114,28 @@ export default function NotificationsPage() {
       setSelectedTeamId("");
     }
   }, [role, teamId, departmentId]);
+
+  useEffect(() => {
+    // Keep teams list in sync when SUPER/ADMIN chooses a department for targeting.
+    const isSuper = role === "SUPER_ADMIN" || role === "ADMIN";
+    if (!isSuper) return;
+    if (targetType !== "TEAM") return;
+    if (!selectedDeptId) {
+      setTeams([]);
+      setSelectedTeamId("");
+      return;
+    }
+    void (async () => {
+      try {
+        const { data } = await api.get<TeamDto[]>(`/api/teams/department/${selectedDeptId}`);
+        setTeams(data);
+        setSelectedTeamId(data[0]?.id ?? "");
+      } catch {
+        setTeams([]);
+        setSelectedTeamId("");
+      }
+    })();
+  }, [role, targetType, selectedDeptId]);
 
   useEffect(() => {
     if (!token) return;
@@ -118,11 +172,27 @@ export default function NotificationsPage() {
   }
 
   async function sendTeam() {
-    const targetTeamId = role === "TEAM_LEADER" ? teamId : selectedTeamId;
-    if (!targetTeamId || !sendText.trim()) return;
+    if (!sendText.trim()) return;
     setSendOk(null);
     try {
-      await api.post("/api/notification/send", { teamId: targetTeamId, message: sendText.trim() });
+      if (role === "SUPER_ADMIN" || role === "ADMIN") {
+        const body: Record<string, unknown> = {
+          targetType,
+          message: sendText.trim(),
+        };
+        if (targetType === "DEPARTMENT") body.departmentId = selectedDeptId || null;
+        if (targetType === "TEAM") body.teamId = selectedTeamId || null;
+        if (targetType === "EMPLOYEE") body.employeeUserId = selectedEmployeeUserId || null;
+        await api.post("/api/notification/send", body);
+      } else {
+        const targetTeamId = role === "TEAM_LEADER" ? teamId : selectedTeamId;
+        if (!targetTeamId) return;
+        await api.post("/api/notification/send", {
+          targetType: "TEAM",
+          teamId: targetTeamId,
+          message: sendText.trim(),
+        });
+      }
       setSendText("");
       setSendOk("Sent to your team.");
     } catch (e: unknown) {
@@ -158,29 +228,122 @@ export default function NotificationsPage() {
         role === "DEPT_MANAGER" ||
         (role === "TEAM_LEADER" && teamId)) && (
         <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-          <h2 className="font-semibold">Send to employees (by team)</h2>
-          {role !== "TEAM_LEADER" && (
+          <h2 className="font-semibold">Send notification</h2>
+
+          {(role === "SUPER_ADMIN" || role === "ADMIN") && (
             <label className="mt-2 block text-sm">
-              Team
+              Target
               <select
                 className="mt-1 w-full rounded border border-zinc-300 p-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
-                value={selectedTeamId}
-                onChange={(e) => setSelectedTeamId(e.target.value)}
+                value={targetType}
+                onChange={(e) => {
+                  const v = e.target.value as TargetType;
+                  setTargetType(v);
+                  setSelectedDeptId("");
+                  setSelectedTeamId("");
+                  setSelectedEmployeeUserId("");
+                }}
+              >
+                <option value="ALL_EMPLOYEES">All employees</option>
+                <option value="DEPARTMENT">Specific department</option>
+                <option value="TEAM">Specific team</option>
+                <option value="EMPLOYEE">Specific employee</option>
+              </select>
+            </label>
+          )}
+
+          {(role === "SUPER_ADMIN" || role === "ADMIN") && targetType === "DEPARTMENT" && (
+            <label className="mt-2 block text-sm">
+              Department
+              <select
+                className="mt-1 w-full rounded border border-zinc-300 p-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
+                value={selectedDeptId}
+                onChange={(e) => setSelectedDeptId(e.target.value)}
               >
                 <option value="">— Select —</option>
-                {teams.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
                   </option>
                 ))}
               </select>
-              {role === "ADMIN" || role === "SUPER_ADMIN" ? (
-                <div className="mt-1 text-xs text-zinc-500">
-                  Tip: choose a department on Attendance first so teams load here.
-                </div>
-              ) : null}
             </label>
           )}
+
+          {(role === "SUPER_ADMIN" || role === "ADMIN") && targetType === "TEAM" && (
+            <>
+              <label className="mt-2 block text-sm">
+                Department (optional)
+                <select
+                  className="mt-1 w-full rounded border border-zinc-300 p-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
+                  value={selectedDeptId}
+                  onChange={(e) => setSelectedDeptId(e.target.value)}
+                >
+                  <option value="">— Select —</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="mt-2 block text-sm">
+                Team
+                <select
+                  className="mt-1 w-full rounded border border-zinc-300 p-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
+                  value={selectedTeamId}
+                  onChange={(e) => setSelectedTeamId(e.target.value)}
+                >
+                  <option value="">— Select —</option>
+                  {teams.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          )}
+
+          {(role === "SUPER_ADMIN" || role === "ADMIN") && targetType === "EMPLOYEE" && (
+            <label className="mt-2 block text-sm">
+              Employee
+              <select
+                className="mt-1 w-full rounded border border-zinc-300 p-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
+                value={selectedEmployeeUserId}
+                onChange={(e) => setSelectedEmployeeUserId(e.target.value)}
+              >
+                <option value="">— Select —</option>
+                {employees.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.email})
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {(role === "DEPT_MANAGER" || role === "TEAM_LEADER" || role === "ADMIN" || role === "SUPER_ADMIN") &&
+            role !== "TEAM_LEADER" &&
+            role !== "SUPER_ADMIN" &&
+            role !== "ADMIN" && (
+              <label className="mt-2 block text-sm">
+                Team
+                <select
+                  className="mt-1 w-full rounded border border-zinc-300 p-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
+                  value={selectedTeamId}
+                  onChange={(e) => setSelectedTeamId(e.target.value)}
+                >
+                  <option value="">— Select —</option>
+                  {teams.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
           <textarea
             className="mt-2 w-full rounded border border-zinc-300 p-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
             rows={3}

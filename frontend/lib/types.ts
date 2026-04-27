@@ -127,6 +127,8 @@ export interface DepartmentDto {
   description: string | null;
   createdAt: string;
   adminId: string | null;
+  businessFirstStartHour?: number | null;
+  businessLastStartHour?: number | null;
 }
 
 export interface TeamDto {

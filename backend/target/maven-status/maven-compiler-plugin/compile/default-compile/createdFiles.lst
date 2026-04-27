@@ -34,6 +34,7 @@ com\punchermanager\service\AttendanceService.class
 com\punchermanager\repository\WeeklyScheduleRepository.class
 com\punchermanager\web\exception\ApiException.class
 com\punchermanager\web\dto\DepartmentResponse.class
+com\punchermanager\web\dto\SendNotificationRequest$TargetType.class
 com\punchermanager\web\controller\CompanySettingsController.class
 com\punchermanager\service\DepartmentService.class
 com\punchermanager\service\UserAdminService.class

@@ -2,9 +2,11 @@ package com.punchermanager.service;
 
 import com.punchermanager.domain.NotificationEntity;
 import com.punchermanager.domain.NotificationType;
+import com.punchermanager.domain.UserStatus;
 import com.punchermanager.domain.Team;
 import com.punchermanager.domain.User;
 import com.punchermanager.domain.UserRole;
+import com.punchermanager.repository.DepartmentRepository;
 import com.punchermanager.repository.NotificationRepository;
 import com.punchermanager.repository.TeamRepository;
 import com.punchermanager.repository.UserRepository;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class NotificationService {
 
   private final NotificationRepository notificationRepository;
+  private final DepartmentRepository departmentRepository;
   private final TeamRepository teamRepository;
   private final UserRepository userRepository;
   private final SseNotificationBroadcaster broadcaster;
@@ -29,11 +32,13 @@ public class NotificationService {
 
   public NotificationService(
       NotificationRepository notificationRepository,
+      DepartmentRepository departmentRepository,
       TeamRepository teamRepository,
       UserRepository userRepository,
       SseNotificationBroadcaster broadcaster,
       ObjectMapper objectMapper) {
     this.notificationRepository = notificationRepository;
+    this.departmentRepository = departmentRepository;
     this.teamRepository = teamRepository;
     this.userRepository = userRepository;
     this.broadcaster = broadcaster;
@@ -42,33 +47,102 @@ public class NotificationService {
 
   @Transactional
   public void sendToTeam(User sender, SendNotificationRequest req) {
-    Team team =
-        teamRepository
-            .findByIdFetched(req.getTeamId())
-            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Team not found"));
-
-    switch (sender.getRole()) {
-      case SUPER_ADMIN, ADMIN -> {
-        // Can message any team.
-      }
-      case DEPT_MANAGER -> {
-        if (sender.getDepartment() == null) {
-          throw new ApiException(HttpStatus.FORBIDDEN, "No department scope");
-        }
-        if (team.getDepartment() == null
-            || !team.getDepartment().getId().equals(sender.getDepartment().getId())) {
-          throw new ApiException(HttpStatus.FORBIDDEN, "Not your department");
-        }
-      }
-      case TEAM_LEADER -> {
-        if (!team.getTeamLeader().getId().equals(sender.getId())) {
-          throw new ApiException(HttpStatus.FORBIDDEN, "Not your team");
-        }
-      }
-      default -> throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to broadcast");
+    if (req.getTargetType() == null) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "Missing targetType");
+    }
+    if (req.getMessage() == null || req.getMessage().trim().isEmpty()) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "Message is required");
     }
 
-    List<User> recipients = userRepository.findEmployeesByTeamId(team.getId());
+    List<User> recipients;
+    switch (req.getTargetType()) {
+      case ALL_EMPLOYEES -> {
+        if (sender.getRole() != UserRole.SUPER_ADMIN && sender.getRole() != UserRole.ADMIN) {
+          throw new ApiException(HttpStatus.FORBIDDEN, "Only SUPER_ADMIN/ADMIN can message all employees");
+        }
+        recipients = userRepository.findByRoleAndStatus(UserRole.EMPLOYEE, UserStatus.ACTIVE);
+      }
+      case DEPARTMENT -> {
+        if (req.getDepartmentId() == null) {
+          throw new ApiException(HttpStatus.BAD_REQUEST, "departmentId is required");
+        }
+        departmentRepository
+            .findById(req.getDepartmentId())
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Department not found"));
+        if (sender.getRole() == UserRole.DEPT_MANAGER) {
+          if (sender.getDepartment() == null
+              || !sender.getDepartment().getId().equals(req.getDepartmentId())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Not your department");
+          }
+        } else if (sender.getRole() != UserRole.SUPER_ADMIN && sender.getRole() != UserRole.ADMIN) {
+          throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed");
+        }
+        recipients = userRepository.findByDepartmentIdAndRole(req.getDepartmentId(), UserRole.EMPLOYEE);
+      }
+      case TEAM -> {
+        if (req.getTeamId() == null) {
+          throw new ApiException(HttpStatus.BAD_REQUEST, "teamId is required");
+        }
+        Team team =
+            teamRepository
+                .findByIdFetched(req.getTeamId())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Team not found"));
+        switch (sender.getRole()) {
+          case SUPER_ADMIN, ADMIN -> {
+            // ok
+          }
+          case DEPT_MANAGER -> {
+            if (sender.getDepartment() == null) {
+              throw new ApiException(HttpStatus.FORBIDDEN, "No department scope");
+            }
+            if (team.getDepartment() == null
+                || !team.getDepartment().getId().equals(sender.getDepartment().getId())) {
+              throw new ApiException(HttpStatus.FORBIDDEN, "Not your department");
+            }
+          }
+          case TEAM_LEADER -> {
+            if (!team.getTeamLeader().getId().equals(sender.getId())) {
+              throw new ApiException(HttpStatus.FORBIDDEN, "Not your team");
+            }
+          }
+          default -> throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed");
+        }
+        recipients = userRepository.findEmployeesByTeamId(team.getId());
+      }
+      case EMPLOYEE -> {
+        if (req.getEmployeeUserId() == null) {
+          throw new ApiException(HttpStatus.BAD_REQUEST, "employeeUserId is required");
+        }
+        User target =
+            userRepository
+                .findById(req.getEmployeeUserId())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Employee not found"));
+        if (target.getRole() != UserRole.EMPLOYEE) {
+          throw new ApiException(HttpStatus.BAD_REQUEST, "Target must be an EMPLOYEE");
+        }
+        switch (sender.getRole()) {
+          case SUPER_ADMIN, ADMIN -> {}
+          case DEPT_MANAGER -> {
+            if (sender.getDepartment() == null
+                || target.getDepartment() == null
+                || !sender.getDepartment().getId().equals(target.getDepartment().getId())) {
+              throw new ApiException(HttpStatus.FORBIDDEN, "Not your department");
+            }
+          }
+          case TEAM_LEADER -> {
+            if (sender.getTeam() == null
+                || target.getTeam() == null
+                || !sender.getTeam().getId().equals(target.getTeam().getId())) {
+              throw new ApiException(HttpStatus.FORBIDDEN, "Not your team");
+            }
+          }
+          default -> throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed");
+        }
+        recipients = List.of(target);
+      }
+      default -> throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid targetType");
+    }
+
     for (User r : recipients) {
       NotificationEntity saved =
           createAndPublish(sender, r, NotificationType.MESSAGE, req.getMessage(), null);

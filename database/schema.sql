@@ -8,7 +8,9 @@ CREATE TABLE departments (
   name VARCHAR(255) NOT NULL,
   description TEXT,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  admin_id UUID NULL
+  admin_id UUID NULL,
+  business_first_start_hour INTEGER,
+  business_last_start_hour INTEGER
 );
 
 CREATE TABLE users (

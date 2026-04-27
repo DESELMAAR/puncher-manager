@@ -36,6 +36,8 @@ public class DepartmentService {
     Department d = new Department();
     d.setName(req.getName());
     d.setDescription(req.getDescription());
+    d.setBusinessFirstStartHour(req.getBusinessFirstStartHour());
+    d.setBusinessLastStartHour(req.getBusinessLastStartHour());
     if (req.getAdminId() != null) {
       User admin =
           userRepository
@@ -65,6 +67,8 @@ public class DepartmentService {
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Department not found"));
     d.setName(req.getName());
     d.setDescription(req.getDescription());
+    d.setBusinessFirstStartHour(req.getBusinessFirstStartHour());
+    d.setBusinessLastStartHour(req.getBusinessLastStartHour());
     if (req.getAdminId() != null) {
       User admin =
           userRepository
@@ -98,6 +102,8 @@ public class DepartmentService {
         d.getName(),
         d.getDescription(),
         d.getCreatedAt(),
-        d.getAdmin() != null ? d.getAdmin().getId() : null);
+        d.getAdmin() != null ? d.getAdmin().getId() : null,
+        d.getBusinessFirstStartHour(),
+        d.getBusinessLastStartHour());
   }
 }

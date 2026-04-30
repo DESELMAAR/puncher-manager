@@ -17,6 +17,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -64,6 +67,7 @@ public class DataSeeder implements ApplicationRunner {
     if (!userRepository.existsByEmployeeId("STUDY-ON-01")) {
       seedFictionalStudyAttendance();
     }
+    seedFuturePunchesForKnownEmployees();
   }
 
   /** Original demo org: Super Admin, Engineering, Alpha Squad, one employee. */
@@ -304,5 +308,111 @@ public class DataSeeder implements ApplicationRunner {
     p.setPunchType(type);
     p.setPunchedAt(when);
     punchRepository.save(p);
+  }
+
+  /**
+   * Seeds future-dated punches for existing employees to make it easy to demo/export/verify
+   * behavior. Idempotent: if a day already has WORK_START, we skip that day.
+   */
+  private void seedFuturePunchesForKnownEmployees() {
+    // Employee IDs provided by user (Directory list)
+    List<String> empIds =
+        List.of(
+            "EMP001",
+            "demo123",
+            "1qw2w",
+            "w12321",
+            "p123321345",
+            "p123321",
+            "p12332134",
+            "STUDY-ON-01",
+            "STUDY-LATE-01",
+            "STUDY-ON-02",
+            "STUDY-LATE-02",
+            "STUDY-GRACE-01",
+            "STUDY-LATE-03",
+            "elmaarpro756",
+            "employee8",
+            "rimemp12",
+            "STUDY-ON-03");
+
+    ZoneId zone = ZoneId.systemDefault();
+    // Seed the last ~2 months plus a few weeks in the future.
+    LocalDate start = LocalDate.now(zone).minusDays(62);
+    LocalDate end = LocalDate.now(zone).plusDays(35); // ~5 weeks ahead, weekends skipped
+
+    int seeded = 0;
+    int skipped = 0;
+    for (String empId : empIds) {
+      Optional<User> opt = userRepository.findByEmployeeId(empId);
+      if (opt.isEmpty()) continue;
+      User u = opt.get();
+
+      for (LocalDate day = start; !day.isAfter(end); day = day.plusDays(1)) {
+        if (day.getDayOfWeek() == DayOfWeek.SATURDAY || day.getDayOfWeek() == DayOfWeek.SUNDAY) {
+          continue;
+        }
+
+        Instant from = day.atStartOfDay(zone).toInstant();
+        Instant to = day.plusDays(1).atStartOfDay(zone).toInstant();
+        if (punchRepository
+            .findFirstByUserIdAndPunchTypeAndPunchedAtBetween(u.getId(), PunchType.WORK_START, from, to)
+            .isPresent()) {
+          skipped++;
+          continue;
+        }
+
+        // Deterministic variation per employee/day (no randomness needed).
+        int h = 9;
+        int baseStartMin = 0;
+        int salt = Math.abs((empId + "|" + day).hashCode());
+        int grace = u.getDepartment() != null && u.getDepartment().getLateGraceMinutes() != null
+            ? Math.max(0, Math.min(120, u.getDepartment().getLateGraceMinutes()))
+            : 10;
+
+        int startOffset;
+        if (salt % 6 == 0) startOffset = 0; // on time
+        else if (salt % 6 == 1) startOffset = Math.min(5, grace); // within grace
+        else if (salt % 6 == 2) startOffset = grace + 3; // slightly late
+        else if (salt % 6 == 3) startOffset = grace + 15; // late
+        else if (salt % 6 == 4) startOffset = 12; // a bit late regardless
+        else startOffset = 2; // near on-time
+
+        LocalTime wsTime = LocalTime.of(h, baseStartMin).plusMinutes(startOffset);
+        LocalTime break1Start = wsTime.plusHours(2).plusMinutes(5);
+        int b1Len = 8 + (salt % 8); // 8..15
+        LocalTime break1End = break1Start.plusMinutes(b1Len);
+
+        LocalTime lunchStart = wsTime.plusHours(4);
+        int lunchLen =
+            u.getDepartment() != null && u.getDepartment().getAllowedLunchMinutes() != null
+                ? Math.max(0, Math.min(300, u.getDepartment().getAllowedLunchMinutes()))
+                : 30;
+        // Slightly vary lunch length up to +10m
+        int lunchLenVar = Math.min(10, salt % 11);
+        LocalTime lunchEnd = lunchStart.plusMinutes(lunchLen + lunchLenVar);
+
+        LocalTime break2Start = wsTime.plusHours(6).plusMinutes(10);
+        int b2Len = 6 + (salt % 7); // 6..12
+        LocalTime break2End = break2Start.plusMinutes(b2Len);
+
+        // End of shift around 8h workday (not subtracting breaks/lunch precisely; it's demo data).
+        LocalTime logout = wsTime.plusHours(8).plusMinutes(10 + (salt % 25));
+
+        savePunch(u, day.atTime(wsTime).atZone(zone).toInstant(), PunchType.WORK_START);
+        savePunch(u, day.atTime(break1Start).atZone(zone).toInstant(), PunchType.BREAK1_START);
+        savePunch(u, day.atTime(break1End).atZone(zone).toInstant(), PunchType.BREAK1_END);
+        savePunch(u, day.atTime(lunchStart).atZone(zone).toInstant(), PunchType.LUNCH_START);
+        savePunch(u, day.atTime(lunchEnd).atZone(zone).toInstant(), PunchType.LUNCH_END);
+        savePunch(u, day.atTime(break2Start).atZone(zone).toInstant(), PunchType.BREAK2_START);
+        savePunch(u, day.atTime(break2End).atZone(zone).toInstant(), PunchType.BREAK2_END);
+        savePunch(u, day.atTime(logout).atZone(zone).toInstant(), PunchType.LOGOUT);
+        seeded++;
+      }
+    }
+
+    if (seeded > 0) {
+      log.info("Seeded {} future punch-days (skipped {} existing)", seeded, skipped);
+    }
   }
 }

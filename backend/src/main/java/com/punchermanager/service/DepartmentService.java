@@ -39,6 +39,8 @@ public class DepartmentService {
     d.setBusinessFirstStartHour(req.getBusinessFirstStartHour());
     d.setBusinessLastStartHour(req.getBusinessLastStartHour());
     d.setLateGraceMinutes(req.getLateGraceMinutes());
+    d.setAllowedLunchMinutes(req.getAllowedLunchMinutes());
+    d.setAllowedBreaksMinutes(req.getAllowedBreaksMinutes());
     if (req.getAdminId() != null) {
       User admin =
           userRepository
@@ -71,6 +73,8 @@ public class DepartmentService {
     d.setBusinessFirstStartHour(req.getBusinessFirstStartHour());
     d.setBusinessLastStartHour(req.getBusinessLastStartHour());
     d.setLateGraceMinutes(req.getLateGraceMinutes());
+    d.setAllowedLunchMinutes(req.getAllowedLunchMinutes());
+    d.setAllowedBreaksMinutes(req.getAllowedBreaksMinutes());
     if (req.getAdminId() != null) {
       User admin =
           userRepository
@@ -107,7 +111,41 @@ public class DepartmentService {
         d.getAdmin() != null ? d.getAdmin().getId() : null,
         d.getBusinessFirstStartHour(),
         d.getBusinessLastStartHour(),
-        d.getLateGraceMinutes());
+        d.getLateGraceMinutes(),
+        d.getAllowedLunchMinutes(),
+        d.getAllowedBreaksMinutes());
+  }
+
+  @Transactional
+  public DepartmentResponse updateAllowedDurations(
+      UUID id, Integer allowedLunchMinutes, Integer allowedBreaksMinutes, User requester) {
+    if (allowedLunchMinutes != null && (allowedLunchMinutes < 0 || allowedLunchMinutes > 300)) {
+      throw new ApiException(
+          HttpStatus.BAD_REQUEST, "Allowed lunch minutes must be between 0 and 300");
+    }
+    if (allowedBreaksMinutes != null && (allowedBreaksMinutes < 0 || allowedBreaksMinutes > 300)) {
+      throw new ApiException(
+          HttpStatus.BAD_REQUEST, "Allowed breaks minutes must be between 0 and 300");
+    }
+    Department d =
+        departmentRepository
+            .findById(id)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Department not found"));
+
+    switch (requester.getRole()) {
+      case SUPER_ADMIN, ADMIN -> {}
+      case DEPT_MANAGER -> {
+        if (requester.getDepartment() == null
+            || !requester.getDepartment().getId().equals(d.getId())) {
+          throw new ApiException(HttpStatus.FORBIDDEN, "Not your department");
+        }
+      }
+      default -> throw new ApiException(HttpStatus.FORBIDDEN, "Insufficient role");
+    }
+
+    d.setAllowedLunchMinutes(allowedLunchMinutes);
+    d.setAllowedBreaksMinutes(allowedBreaksMinutes);
+    return toResponse(departmentRepository.save(d));
   }
 
   @Transactional

@@ -47,6 +47,14 @@ public class Department {
   @Column(name = "late_grace_minutes")
   private Integer lateGraceMinutes;
 
+  /** Allowed lunch duration (minutes). */
+  @Column(name = "allowed_lunch_minutes")
+  private Integer allowedLunchMinutes;
+
+  /** Allowed total breaks duration (minutes) (BREAK1 + BREAK2). */
+  @Column(name = "allowed_breaks_minutes")
+  private Integer allowedBreaksMinutes;
+
   public Department() {}
 
   public UUID getId() {
@@ -111,5 +119,21 @@ public class Department {
 
   public void setLateGraceMinutes(Integer lateGraceMinutes) {
     this.lateGraceMinutes = lateGraceMinutes;
+  }
+
+  public Integer getAllowedLunchMinutes() {
+    return allowedLunchMinutes;
+  }
+
+  public void setAllowedLunchMinutes(Integer allowedLunchMinutes) {
+    this.allowedLunchMinutes = allowedLunchMinutes;
+  }
+
+  public Integer getAllowedBreaksMinutes() {
+    return allowedBreaksMinutes;
+  }
+
+  public void setAllowedBreaksMinutes(Integer allowedBreaksMinutes) {
+    this.allowedBreaksMinutes = allowedBreaksMinutes;
   }
 }

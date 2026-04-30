@@ -130,6 +130,8 @@ export interface DepartmentDto {
   businessFirstStartHour?: number | null;
   businessLastStartHour?: number | null;
   lateGraceMinutes?: number | null;
+  allowedLunchMinutes?: number | null;
+  allowedBreaksMinutes?: number | null;
 }
 
 export interface TeamDto {

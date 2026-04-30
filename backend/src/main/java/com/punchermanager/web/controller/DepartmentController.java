@@ -2,6 +2,7 @@ package com.punchermanager.web.controller;
 
 import com.punchermanager.service.DepartmentService;
 import com.punchermanager.service.UserContextService;
+import com.punchermanager.web.dto.DepartmentDurationsRequest;
 import com.punchermanager.web.dto.DepartmentRequest;
 import com.punchermanager.web.dto.DepartmentResponse;
 import com.punchermanager.web.dto.DepartmentGraceRequest;
@@ -56,6 +57,17 @@ public class DepartmentController {
       HttpServletRequest http, @PathVariable UUID id, @RequestBody DepartmentGraceRequest body) {
     var user = userContextService.requireCurrentUser(http);
     return departmentService.updateLateGraceMinutes(id, body.getLateGraceMinutes(), user);
+  }
+
+  @PutMapping("/{id}/durations")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','DEPT_MANAGER')")
+  public DepartmentResponse updateDurations(
+      HttpServletRequest http,
+      @PathVariable UUID id,
+      @RequestBody DepartmentDurationsRequest body) {
+    var user = userContextService.requireCurrentUser(http);
+    return departmentService.updateAllowedDurations(
+        id, body.getAllowedLunchMinutes(), body.getAllowedBreaksMinutes(), user);
   }
 
   @DeleteMapping("/{id}")

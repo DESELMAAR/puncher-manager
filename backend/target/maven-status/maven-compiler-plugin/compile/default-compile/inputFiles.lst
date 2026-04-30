@@ -30,6 +30,7 @@ C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\b
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\security\JwtAuthenticationFilter.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\CompanySettingsUpsertRequest.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\CompanySettingsService.java
+C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\DepartmentDurationsRequest.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\ScheduleConfirmationStatus.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\NotificationEntity.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\ScheduleRespondRequest.java

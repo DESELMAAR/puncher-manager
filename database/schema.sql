@@ -11,7 +11,9 @@ CREATE TABLE departments (
   admin_id UUID NULL,
   business_first_start_hour INTEGER,
   business_last_start_hour INTEGER,
-  late_grace_minutes INTEGER
+  late_grace_minutes INTEGER,
+  allowed_lunch_minutes INTEGER,
+  allowed_breaks_minutes INTEGER
 );
 
 CREATE TABLE users (

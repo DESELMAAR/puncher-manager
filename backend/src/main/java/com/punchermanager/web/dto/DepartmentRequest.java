@@ -20,6 +20,12 @@ public class DepartmentRequest {
   /** Grace time (minutes) allowed after scheduled start before "late". Optional. */
   private Integer lateGraceMinutes;
 
+  /** Allowed lunch duration (minutes). Optional. */
+  private Integer allowedLunchMinutes;
+
+  /** Allowed total breaks duration (minutes). Optional. */
+  private Integer allowedBreaksMinutes;
+
   public String getName() {
     return name;
   }
@@ -66,5 +72,21 @@ public class DepartmentRequest {
 
   public void setLateGraceMinutes(Integer lateGraceMinutes) {
     this.lateGraceMinutes = lateGraceMinutes;
+  }
+
+  public Integer getAllowedLunchMinutes() {
+    return allowedLunchMinutes;
+  }
+
+  public void setAllowedLunchMinutes(Integer allowedLunchMinutes) {
+    this.allowedLunchMinutes = allowedLunchMinutes;
+  }
+
+  public Integer getAllowedBreaksMinutes() {
+    return allowedBreaksMinutes;
+  }
+
+  public void setAllowedBreaksMinutes(Integer allowedBreaksMinutes) {
+    this.allowedBreaksMinutes = allowedBreaksMinutes;
   }
 }

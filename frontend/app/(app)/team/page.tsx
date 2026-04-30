@@ -356,6 +356,8 @@ export default function TeamPage() {
   const [overviewMode, setOverviewMode] = useState(true);
   const [overview, setOverview] = useState<AttendanceOverviewGroupDto[]>([]);
   const [lateGraceMinutesInput, setLateGraceMinutesInput] = useState<string>("");
+  const [allowedLunchMinutesInput, setAllowedLunchMinutesInput] = useState<string>("");
+  const [allowedBreaksMinutesInput, setAllowedBreaksMinutesInput] = useState<string>("");
 
   const loadTeamsForDepartment = useCallback(async (deptId: string) => {
     const { data } = await api.get<TeamDto[]>(`/api/teams/department/${deptId}`);
@@ -391,6 +393,12 @@ export default function TeamPage() {
           setLateGraceMinutesInput(
             myDept?.lateGraceMinutes != null ? String(myDept.lateGraceMinutes) : "",
           );
+          setAllowedLunchMinutesInput(
+            myDept?.allowedLunchMinutes != null ? String(myDept.allowedLunchMinutes) : "",
+          );
+          setAllowedBreaksMinutesInput(
+            myDept?.allowedBreaksMinutes != null ? String(myDept.allowedBreaksMinutes) : "",
+          );
 
           const { data } = await api.get<TeamDto[]>(`/api/teams/department/${departmentId}`);
           if (cancelled) return;
@@ -419,6 +427,14 @@ export default function TeamPage() {
           const deptForGrace = depts.find((d) => d.id === initial);
           setLateGraceMinutesInput(
             deptForGrace?.lateGraceMinutes != null ? String(deptForGrace.lateGraceMinutes) : "",
+          );
+          setAllowedLunchMinutesInput(
+            deptForGrace?.allowedLunchMinutes != null ? String(deptForGrace.allowedLunchMinutes) : "",
+          );
+          setAllowedBreaksMinutesInput(
+            deptForGrace?.allowedBreaksMinutes != null
+              ? String(deptForGrace.allowedBreaksMinutes)
+              : "",
           );
           if (initial) {
             const { data: teamList } = await api.get<TeamDto[]>(
@@ -458,6 +474,12 @@ export default function TeamPage() {
     try {
       const dept = departments.find((d) => d.id === deptId);
       setLateGraceMinutesInput(dept?.lateGraceMinutes != null ? String(dept.lateGraceMinutes) : "");
+      setAllowedLunchMinutesInput(
+        dept?.allowedLunchMinutes != null ? String(dept.allowedLunchMinutes) : "",
+      );
+      setAllowedBreaksMinutesInput(
+        dept?.allowedBreaksMinutes != null ? String(dept.allowedBreaksMinutes) : "",
+      );
       await loadTeamsForDepartment(deptId);
     } catch {
       setTeams([]);
@@ -487,6 +509,46 @@ export default function TeamPage() {
         data.lateGraceMinutes != null ? String(data.lateGraceMinutes) : "",
       );
       toast.success("Grace time updated");
+    } catch (e) {
+      toast.error(extractApiMessage(e));
+    }
+  }
+
+  async function saveAllowedDurations() {
+    if (!canEditLateGrace) return;
+    const deptId = selectedDeptId ?? departmentId ?? "";
+    if (!deptId) return;
+    const lunchRaw = allowedLunchMinutesInput.trim();
+    const breaksRaw = allowedBreaksMinutesInput.trim();
+    const allowedLunchMinutes = lunchRaw === "" ? null : Number(lunchRaw);
+    const allowedBreaksMinutes = breaksRaw === "" ? null : Number(breaksRaw);
+    if (
+      allowedLunchMinutes != null &&
+      (!Number.isFinite(allowedLunchMinutes) || allowedLunchMinutes < 0 || allowedLunchMinutes > 300)
+    ) {
+      toast.error("Allowed lunch minutes must be between 0 and 300");
+      return;
+    }
+    if (
+      allowedBreaksMinutes != null &&
+      (!Number.isFinite(allowedBreaksMinutes) || allowedBreaksMinutes < 0 || allowedBreaksMinutes > 300)
+    ) {
+      toast.error("Allowed breaks minutes must be between 0 and 300");
+      return;
+    }
+    try {
+      const { data } = await api.put<DepartmentDto>(`/api/departments/${deptId}/durations`, {
+        allowedLunchMinutes,
+        allowedBreaksMinutes,
+      });
+      setDepartments((prev) => prev.map((d) => (d.id === deptId ? { ...d, ...data } : d)));
+      setAllowedLunchMinutesInput(
+        data.allowedLunchMinutes != null ? String(data.allowedLunchMinutes) : "",
+      );
+      setAllowedBreaksMinutesInput(
+        data.allowedBreaksMinutes != null ? String(data.allowedBreaksMinutes) : "",
+      );
+      toast.success("Allowed durations updated");
     } catch (e) {
       toast.error(extractApiMessage(e));
     }
@@ -758,6 +820,37 @@ export default function TeamPage() {
             <button
               type="button"
               onClick={() => void saveLateGraceMinutes()}
+              className="rounded-lg border border-zinc-300 px-3 py-1 text-sm dark:border-zinc-600"
+            >
+              Save
+            </button>
+          </span>
+        )}
+        {canEditLateGrace && (selectedDeptId ?? departmentId) && (
+          <span className="inline-flex flex-wrap items-center gap-2 text-sm">
+            <span>Allowed lunch (min)</span>
+            <input
+              type="number"
+              min={0}
+              max={300}
+              value={allowedLunchMinutesInput}
+              onChange={(e) => setAllowedLunchMinutesInput(e.target.value)}
+              className="w-20 rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600 dark:bg-zinc-800"
+              placeholder="30"
+            />
+            <span>Allowed breaks (min)</span>
+            <input
+              type="number"
+              min={0}
+              max={300}
+              value={allowedBreaksMinutesInput}
+              onChange={(e) => setAllowedBreaksMinutesInput(e.target.value)}
+              className="w-20 rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600 dark:bg-zinc-800"
+              placeholder="20"
+            />
+            <button
+              type="button"
+              onClick={() => void saveAllowedDurations()}
               className="rounded-lg border border-zinc-300 px-3 py-1 text-sm dark:border-zinc-600"
             >
               Save

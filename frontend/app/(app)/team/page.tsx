@@ -353,7 +353,7 @@ export default function TeamPage() {
   const [to, setTo] = useState(() => localDateISO());
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState<AttendanceRow[]>([]);
-  const [overviewMode, setOverviewMode] = useState(false);
+  const [overviewMode, setOverviewMode] = useState(true);
   const [overview, setOverview] = useState<AttendanceOverviewGroupDto[]>([]);
   const [lateGraceMinutesInput, setLateGraceMinutesInput] = useState<string>("");
 
@@ -891,7 +891,7 @@ export default function TeamPage() {
                     className={`border-t border-zinc-200 transition-colors dark:border-zinc-800 hover:bg-zinc-50/70 dark:hover:bg-zinc-900/40 ${
                       rangeMode ? dayColorClass(r.recordDate) : ""
                     } ${
-                      manuallyOpen
+                      manuallyOpen || punchesExpanded
                         ? rangeMode
                           ? "ring-2 ring-inset ring-emerald-400/60"
                           : "bg-emerald-50/70 ring-2 ring-inset ring-emerald-400/50 dark:bg-emerald-950/20"
@@ -1101,7 +1101,7 @@ export default function TeamPage() {
                       className={`border-t border-zinc-200 transition-colors dark:border-zinc-800 hover:bg-zinc-50/70 dark:hover:bg-zinc-900/40 ${
                         rangeMode ? dayColorClass(r.recordDate) : ""
                       } ${
-                        manuallyOpen
+                        manuallyOpen || punchesExpanded
                           ? rangeMode
                             ? "ring-2 ring-inset ring-emerald-400/60"
                             : "bg-emerald-50/70 ring-2 ring-inset ring-emerald-400/50 dark:bg-emerald-950/20"

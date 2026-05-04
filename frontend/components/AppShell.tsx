@@ -99,9 +99,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    async function loadUnread() {
+    async function loadUnread(silent?: boolean) {
       try {
-        const { data } = await api.get<NotificationDto[]>("/api/notification/my");
+        const { data } = await api.get<NotificationDto[]>("/api/notification/my", {
+          skipGlobalLoading: silent,
+        });
         const c = data.filter((n) => !n.read).length;
         if (!cancelled) setUnreadCount(c);
       } catch {
@@ -110,7 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
 
     void loadUnread();
-    const interval = window.setInterval(loadUnread, 20000);
+    const interval = window.setInterval(() => void loadUnread(true), 20000);
     return () => {
       cancelled = true;
       window.clearInterval(interval);

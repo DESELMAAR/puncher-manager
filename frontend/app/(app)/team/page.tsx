@@ -11,6 +11,7 @@ import type {
   TeamDto,
 } from "@/lib/types";
 import { useAuthStore } from "@/store/authStore";
+import { withApiLoading } from "@/store/apiLoadingStore";
 import { localDateISO } from "@/lib/dateUtils";
 import { useT } from "@/lib/useT";
 
@@ -742,15 +743,18 @@ export default function TeamPage() {
     const url = `${baseURL}/api/attendance/team/${selectedTeam}/export?date=${date}`;
     const headers: HeadersInit = { Authorization: `Bearer ${tok}` };
     if (tz) (headers as Record<string, string>)["X-Client-Timezone"] = tz;
-    void fetch(url, { headers })
-      .then((r) => r.blob())
-      .then((blob) => {
+    void withApiLoading(async () => {
+      try {
+        const r = await fetch(url, { headers });
+        const blob = await r.blob();
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
         a.download = `attendance-${date}.csv`;
         a.click();
-      })
-      .catch(() => window.open(url, "_blank", "noopener"));
+      } catch {
+        window.open(url, "_blank", "noopener");
+      }
+    });
   }
 
   const canExportAllDepartments = role === "SUPER_ADMIN" || role === "ADMIN";

@@ -102,3 +102,25 @@ body {
   filter: drop-shadow(0 1px 0 rgb(110 231 183 / 0.35))
     drop-shadow(0 2px 4px rgb(0 0 0 / 0.25));
 }
+
+@keyframes global-api-loading-slide {
+  0% {
+    transform: translateX(-65%);
+  }
+  100% {
+    transform: translateX(165%);
+  }
+}
+
+.global-api-loading-shimmer {
+  width: 55%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(16 185 129 / 0.55),
+    rgb(52 211 153 / 0.95),
+    rgb(16 185 129 / 0.55),
+    transparent
+  );
+  animation: global-api-loading-slide 1.05s ease-in-out infinite;
+}

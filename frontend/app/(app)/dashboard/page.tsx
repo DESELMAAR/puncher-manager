@@ -27,10 +27,11 @@ export default function DashboardPage() {
   const [scheduleNotification, setScheduleNotification] = useState<NotificationDto | null>(null);
   const [schedulePayload, setSchedulePayload] = useState<WeeklyScheduleResponse | null>(null);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (silent?: boolean) => {
     const day = localDateISO();
     const { data } = await api.get<PunchDto[]>("/api/punch/my-history", {
       params: { from: day, to: day },
+      skipGlobalLoading: silent,
     });
     setPunches(data);
   }, []);
@@ -38,14 +39,16 @@ export default function DashboardPage() {
   useEffect(() => {
     if (role !== "EMPLOYEE") return;
     void refresh();
-    const id = setInterval(() => void refresh(), 15_000);
+    const id = setInterval(() => void refresh(true), 15_000);
     return () => clearInterval(id);
   }, [role, refresh]);
 
-  const checkScheduleNotifications = useCallback(async () => {
+  const checkScheduleNotifications = useCallback(async (silent?: boolean) => {
     if (role !== "EMPLOYEE") return;
     try {
-      const { data } = await api.get<NotificationDto[]>("/api/notification/my");
+      const { data } = await api.get<NotificationDto[]>("/api/notification/my", {
+        skipGlobalLoading: silent,
+      });
       const first = data.find((n) => !n.read && n.type === "SCHEDULE_CONFIRM" && n.payloadJson);
       if (!first) return;
       const payload = JSON.parse(first.payloadJson as string) as WeeklyScheduleResponse;
@@ -60,7 +63,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     void checkScheduleNotifications();
-    const id = setInterval(() => void checkScheduleNotifications(), 30_000);
+    const id = setInterval(() => void checkScheduleNotifications(true), 30_000);
     return () => clearInterval(id);
   }, [checkScheduleNotifications]);
 

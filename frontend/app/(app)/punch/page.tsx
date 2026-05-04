@@ -14,10 +14,11 @@ export default function PunchPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (silent?: boolean) => {
     const day = localDateISO();
     const { data } = await api.get<PunchDto[]>("/api/punch/my-history", {
       params: { from: day, to: day },
+      skipGlobalLoading: silent,
     });
     setPunches(data);
     setNext(nextExpectedPunch(data));
@@ -25,7 +26,7 @@ export default function PunchPage() {
 
   useEffect(() => {
     void refresh();
-    const id = setInterval(() => void refresh(), 15_000);
+    const id = setInterval(() => void refresh(true), 15_000);
     return () => clearInterval(id);
   }, [refresh]);
 
@@ -34,7 +35,7 @@ export default function PunchPage() {
     setLoading(true);
     try {
       await api.post("/api/punch", { type, timestamp: new Date().toISOString() });
-      await refresh();
+      await refresh(true);
     } catch (e: unknown) {
       const m =
         (e as { response?: { data?: { message?: string } } })?.response?.data?.message ||

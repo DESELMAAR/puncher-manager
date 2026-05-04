@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import { useUiStore, type BackgroundTheme } from "@/store/uiStore";
 import { useI18nStore, type Language } from "@/store/i18nStore";
 import { t } from "@/lib/i18n";
+import { GlobalApiLoading } from "@/components/GlobalApiLoading";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [dark, setDark] = useState(false);
@@ -46,6 +47,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <GlobalApiLoading />
       <Toaster richColors position="top-right" closeButton />
       <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2">
         <button

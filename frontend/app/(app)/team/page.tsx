@@ -470,11 +470,16 @@ export default function TeamPage() {
     return () => document.removeEventListener("pointerdown", onPointerDown, true);
   }, [otherSettingsOpen]);
 
-  const loadTeamsForDepartment = useCallback(async (deptId: string) => {
+  const loadTeamsForDepartment = useCallback(async (deptId: string, preferredTeamId?: string | null) => {
     const { data } = await api.get<TeamDto[]>(`/api/teams/department/${deptId}`);
     const mapped = data.map((t) => ({ id: t.id, name: t.name }));
     setTeams(mapped);
-    setSelectedTeam(mapped[0]?.id ?? null);
+    const preferred = preferredTeamId ?? null;
+    const canKeepAll = preferred === ALL_TEAMS;
+    const canKeepConcrete = preferred != null && mapped.some((t) => t.id === preferred);
+    setSelectedTeam(
+      canKeepAll || canKeepConcrete ? preferred : (mapped[0]?.id ?? null),
+    );
   }, []);
 
   useEffect(() => {
@@ -515,7 +520,10 @@ export default function TeamPage() {
           if (cancelled) return;
           const mapped = data.map((t) => ({ id: t.id, name: t.name }));
           setTeams(mapped);
-          setSelectedTeam(mapped[0]?.id ?? null);
+          const preferred = selectedTeam;
+          const canKeepAll = preferred === ALL_TEAMS;
+          const canKeepConcrete = preferred != null && mapped.some((t) => t.id === preferred);
+          setSelectedTeam(canKeepAll || canKeepConcrete ? preferred : (mapped[0]?.id ?? null));
         } catch {
           if (!cancelled) {
             setTeams([]);
@@ -534,8 +542,11 @@ export default function TeamPage() {
             (departmentId && depts.some((d) => d.id === departmentId) ? departmentId : null) ??
             depts[0]?.id ??
             null;
-          setSelectedDeptId(initial);
-          const deptForGrace = depts.find((d) => d.id === initial);
+          const desiredDept =
+            (selectedDeptId && depts.some((d) => d.id === selectedDeptId) ? selectedDeptId : null) ??
+            initial;
+          setSelectedDeptId(desiredDept);
+          const deptForGrace = depts.find((d) => d.id === desiredDept);
           setLateGraceMinutesInput(
             deptForGrace?.lateGraceMinutes != null ? String(deptForGrace.lateGraceMinutes) : "",
           );
@@ -547,14 +558,17 @@ export default function TeamPage() {
               ? String(deptForGrace.allowedBreaksMinutes)
               : "",
           );
-          if (initial) {
+          if (desiredDept) {
             const { data: teamList } = await api.get<TeamDto[]>(
-              `/api/teams/department/${initial}`,
+              `/api/teams/department/${desiredDept}`,
             );
             if (cancelled) return;
             const mapped = teamList.map((t) => ({ id: t.id, name: t.name }));
             setTeams(mapped);
-            setSelectedTeam(mapped[0]?.id ?? null);
+            const preferred = selectedTeam;
+            const canKeepAll = preferred === ALL_TEAMS;
+            const canKeepConcrete = preferred != null && mapped.some((t) => t.id === preferred);
+            setSelectedTeam(canKeepAll || canKeepConcrete ? preferred : (mapped[0]?.id ?? null));
           } else {
             setTeams([]);
             setSelectedTeam(null);
@@ -578,7 +592,7 @@ export default function TeamPage() {
     return () => {
       cancelled = true;
     };
-  }, [role, teamId, departmentId]);
+  }, [role, teamId, departmentId, selectedDeptId, selectedTeam]);
 
   async function onDepartmentChange(deptId: string) {
     setSelectedDeptId(deptId);
@@ -591,7 +605,7 @@ export default function TeamPage() {
       setAllowedBreaksMinutesInput(
         dept?.allowedBreaksMinutes != null ? String(dept.allowedBreaksMinutes) : "",
       );
-      await loadTeamsForDepartment(deptId);
+      await loadTeamsForDepartment(deptId, null);
     } catch {
       setTeams([]);
       setSelectedTeam(null);

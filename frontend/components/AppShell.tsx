@@ -55,7 +55,7 @@ const links: { href: string; labelKey: I18nKey; roles: UserRole[] }[] = [
   {
     href: "/admin/organization",
     labelKey: "nav.staffRoles",
-    roles: ["SUPER_ADMIN", "ADMIN"],
+    roles: ["SUPER_ADMIN", "ADMIN", "DEPT_MANAGER"],
   },
   {
     href: "/admin/employees",
@@ -121,12 +121,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (!token) return;
     const baseURL =
       process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8080";
-    const url = `${baseURL}/api/notification/stream?access_token=${encodeURIComponent(token)}`;
-    const es = new EventSource(url);
-    es.addEventListener("notification", () => {
-      setUnreadCount((c) => c + 1);
-    });
-    return () => es.close();
+    let cancelled = false;
+    let es: EventSource | null = null;
+    let reconnectTimer: number | undefined;
+    let attempt = 0;
+
+    const connect = () => {
+      if (cancelled) return;
+      es?.close();
+      const url = `${baseURL}/api/notification/stream?access_token=${encodeURIComponent(token)}`;
+      es = new EventSource(url);
+      es.addEventListener("open", () => {
+        attempt = 0;
+      });
+      es.addEventListener("notification", () => {
+        setUnreadCount((c) => c + 1);
+      });
+      es.onerror = () => {
+        es?.close();
+        es = null;
+        if (cancelled) return;
+        const delay = Math.min(60_000, 1000 * 2 ** Math.min(attempt, 8));
+        attempt += 1;
+        reconnectTimer = window.setTimeout(connect, delay);
+      };
+    };
+
+    connect();
+    return () => {
+      cancelled = true;
+      if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer);
+      es?.close();
+    };
   }, [token]);
 
   return (

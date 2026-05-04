@@ -36,6 +36,35 @@ public class UserAdminService {
     this.passwordEncoder = passwordEncoder;
   }
 
+  private void assertDeptManagerTeamAndDeptInScope(User actor, UserUpsertRequest req) {
+    if (actor.getRole() != UserRole.DEPT_MANAGER || actor.getDepartment() == null) {
+      return;
+    }
+    UUID myDept = actor.getDepartment().getId();
+    if (req.getDepartmentId() != null && !req.getDepartmentId().equals(myDept)) {
+      throw new ApiException(HttpStatus.FORBIDDEN, "Outside your department");
+    }
+    if (req.getTeamId() != null) {
+      Team t =
+          teamRepository
+              .findById(req.getTeamId())
+              .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Team not found"));
+      if (!t.getDepartment().getId().equals(myDept)) {
+        throw new ApiException(HttpStatus.FORBIDDEN, "Team not in your department");
+      }
+    }
+  }
+
+  private void assertDeptManagerTargetInOwnDepartment(User actor, User target) {
+    if (actor.getRole() != UserRole.DEPT_MANAGER || actor.getDepartment() == null) {
+      return;
+    }
+    if (target.getDepartment() == null
+        || !target.getDepartment().getId().equals(actor.getDepartment().getId())) {
+      throw new ApiException(HttpStatus.FORBIDDEN, "Outside your department");
+    }
+  }
+
   @Transactional(readOnly = true)
   public List<UserResponse> list(User actor) {
     return switch (actor.getRole()) {
@@ -68,6 +97,7 @@ public class UserAdminService {
       validateTeamLeaderEmployeeUpsert(actor, req);
     } else {
       assertCanManageUser(actor, req.getRole(), resolveDepartmentForAccessCheck(req));
+      assertDeptManagerTeamAndDeptInScope(actor, req);
     }
     if (req.getPassword() == null || req.getPassword().isBlank()) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "Password is required");
@@ -94,7 +124,9 @@ public class UserAdminService {
       assertTeamLeaderManagesEmployee(actor, existing);
       validateTeamLeaderEmployeeUpsert(actor, req);
     } else {
+      assertDeptManagerTargetInOwnDepartment(actor, existing);
       assertCanManageUser(actor, req.getRole(), resolveDepartmentForAccessCheck(req));
+      assertDeptManagerTeamAndDeptInScope(actor, req);
     }
     if (!existing.getEmail().equalsIgnoreCase(req.getEmail().trim())
         && userRepository.existsByEmail(req.getEmail().trim().toLowerCase())) {
@@ -123,10 +155,17 @@ public class UserAdminService {
     if (actor.getRole() == UserRole.TEAM_LEADER) {
       assertTeamLeaderManagesEmployee(actor, target);
     } else {
+      assertDeptManagerTargetInOwnDepartment(actor, target);
       assertCanManageUser(
           actor,
           target.getRole(),
           target.getDepartment() != null ? target.getDepartment().getId() : null);
+    }
+    if (!teamRepository.findByTeamLeader_Id(target.getId()).isEmpty()) {
+      throw new ApiException(
+          HttpStatus.BAD_REQUEST,
+          "Cannot delete: this user is the assigned leader of one or more teams. "
+              + "Assign a different leader in Teams first.");
     }
     userRepository.delete(target);
   }
@@ -236,6 +275,10 @@ public class UserAdminService {
     }
     if (req.getRole() == UserRole.EMPLOYEE && u.getTeam() == null) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "Employees must be assigned to a team");
+    }
+    if (req.getRole() == UserRole.TEAM_LEADER && u.getDepartment() == null) {
+      throw new ApiException(
+          HttpStatus.BAD_REQUEST, "Team leaders must be assigned to a department (or a team)");
     }
   }
 

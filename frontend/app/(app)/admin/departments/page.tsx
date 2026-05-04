@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { extractApiMessage } from "@/lib/errors";
 import type { DepartmentDto, UserDto } from "@/lib/types";
+import { ModalScrim } from "@/components/ModalScrim";
 import { useAuthStore } from "@/store/authStore";
 
 export default function DepartmentsAdminPage() {
@@ -205,13 +206,10 @@ export default function DepartmentsAdminPage() {
       )}
 
       {modalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <button
-            type="button"
-            className="absolute inset-0 bg-zinc-950/60 backdrop-blur-sm"
-            aria-label="Close"
-            onClick={() => setModalOpen(false)}
-          />
+        <ModalScrim
+          onDismiss={() => setModalOpen(false)}
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/60 p-4 backdrop-blur-sm"
+        >
           <div className="relative z-[101] w-full max-w-lg rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900">
             <h2 className="text-xl font-semibold">
               {editing ? "Edit department" : "New department"}
@@ -310,16 +308,14 @@ export default function DepartmentsAdminPage() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalScrim>
       )}
 
       {deleteTarget && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-          <button
-            type="button"
-            className="absolute inset-0 bg-zinc-950/70"
-            onClick={() => setDeleteTarget(null)}
-          />
+        <ModalScrim
+          onDismiss={() => setDeleteTarget(null)}
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-zinc-950/70 p-4"
+        >
           <div className="relative z-[111] max-w-md rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
             <h3 className="font-semibold">Delete department?</h3>
             <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
@@ -342,7 +338,7 @@ export default function DepartmentsAdminPage() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalScrim>
       )}
     </div>
   );

@@ -6,6 +6,7 @@ import {
   StaffUserModal,
   type StaffFormState,
 } from "@/components/admin/StaffUserModal";
+import { ModalScrim } from "@/components/ModalScrim";
 import { api } from "@/lib/api";
 import { extractApiMessage } from "@/lib/errors";
 import type { DepartmentDto, TeamDto, UserDto, UserRole } from "@/lib/types";
@@ -30,7 +31,10 @@ function buildUpsertBody(form: StaffFormState, mode: "create" | "edit") {
   } else if (form.role === "EMPLOYEE") {
     body.teamId = form.teamId || null;
     body.departmentId = null;
-  } else if (form.role === "TEAM_LEADER" || form.role === "DEPT_MANAGER") {
+  } else if (form.role === "TEAM_LEADER") {
+    body.departmentId = form.departmentId || null;
+    body.teamId = form.teamId || null;
+  } else if (form.role === "DEPT_MANAGER") {
     body.departmentId = form.departmentId || null;
     body.teamId = null;
   } else if (form.role === "ADMIN") {
@@ -49,7 +53,11 @@ function buildUpsertBody(form: StaffFormState, mode: "create" | "edit") {
 
 export default function OrganizationAdminPage() {
   const viewerRole = useAuthStore((s) => s.role) as UserRole;
-  const allowed = viewerRole === "SUPER_ADMIN" || viewerRole === "ADMIN";
+  const authDeptId = useAuthStore((s) => s.departmentId);
+  const allowed =
+    viewerRole === "SUPER_ADMIN" ||
+    viewerRole === "ADMIN" ||
+    (viewerRole === "DEPT_MANAGER" && !!authDeptId);
 
   const [rows, setRows] = useState<UserDto[]>([]);
   const [departments, setDepartments] = useState<DepartmentDto[]>([]);
@@ -142,6 +150,8 @@ export default function OrganizationAdminPage() {
     })();
   }, [staffDeptFilter]);
 
+  const isDeptManagerStaffView = viewerRole === "DEPT_MANAGER";
+
   const sortedRows = useMemo(() => {
     const order: UserRole[] = [
       "SUPER_ADMIN",
@@ -150,12 +160,25 @@ export default function OrganizationAdminPage() {
       "TEAM_LEADER",
       "EMPLOYEE",
     ];
-    return [...rows].sort(
+    let list = [...rows];
+    if (isDeptManagerStaffView && authDeptId) {
+      list = list.filter(
+        (u) => u.role === "TEAM_LEADER" && u.departmentId === authDeptId,
+      );
+    }
+    return list.sort(
       (a, b) =>
         order.indexOf(a.role) - order.indexOf(b.role) ||
         a.name.localeCompare(b.name),
     );
-  }, [rows]);
+  }, [rows, isDeptManagerStaffView, authDeptId]);
+
+  const departmentsForModal = useMemo(() => {
+    if (isDeptManagerStaffView && authDeptId) {
+      return departments.filter((d) => d.id === authDeptId);
+    }
+    return departments;
+  }, [departments, isDeptManagerStaffView, authDeptId]);
 
   const deptNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -188,11 +211,18 @@ export default function OrganizationAdminPage() {
 
   async function handleSubmit(form: StaffFormState) {
     try {
+      const body =
+        modalMode === "create"
+          ? buildUpsertBody(form, "create")
+          : buildUpsertBody(form, "edit");
+      if (viewerRole === "DEPT_MANAGER" && authDeptId) {
+        body.departmentId = authDeptId;
+      }
       if (modalMode === "create") {
-        await api.post("/api/users", buildUpsertBody(form, "create"));
+        await api.post("/api/users", body);
         toast.success("User created");
       } else if (editing) {
-        await api.put(`/api/users/${editing.id}`, buildUpsertBody(form, "edit"));
+        await api.put(`/api/users/${editing.id}`, body);
         toast.success("User updated");
       }
       setModalOpen(false);
@@ -220,10 +250,11 @@ export default function OrganizationAdminPage() {
   if (!allowed) {
     return (
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-900 dark:bg-amber-950/40">
-        <p className="font-medium">Only Super Admin and Admin can open Staff & roles.</p>
+        <p className="font-medium">Access denied</p>
         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-          Department managers manage team leaders and employees within their department from other
-          admin pages.
+          {viewerRole === "DEPT_MANAGER" && !authDeptId
+            ? "Your account has no department assigned. Ask a Super Admin to assign you to a department."
+            : "Only Super Admin, Admin, or a department manager with a department can open Staff & roles."}
         </p>
       </div>
     );
@@ -237,10 +268,20 @@ export default function OrganizationAdminPage() {
             Staff & roles
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-            Define the org chain <strong>DEPT_MANAGER</strong> → <strong>TEAM_LEADER</strong> →{" "}
-            <strong>EMPLOYEE</strong>. Create platform admins, department managers, and team leaders;
-            assign a department manager on the <strong>Departments</strong> page; attach a team
-            leader to teams on the <strong>Teams</strong> page.
+            {isDeptManagerStaffView ? (
+              <>
+                Create and manage <strong>TEAM_LEADER</strong> accounts in your department only.
+                Assign each leader to a team here, then confirm they are set as that team&apos;s
+                leader on the <strong>Teams</strong> page if needed.
+              </>
+            ) : (
+              <>
+                Define the org chain <strong>DEPT_MANAGER</strong> → <strong>TEAM_LEADER</strong> →{" "}
+                <strong>EMPLOYEE</strong>. Create platform admins, department managers, and team
+                leaders; assign a department manager on the <strong>Departments</strong> page;
+                attach a team leader to teams on the <strong>Teams</strong> page.
+              </>
+            )}
           </p>
         </div>
         <button
@@ -248,17 +289,19 @@ export default function OrganizationAdminPage() {
           onClick={() => {
             setModalMode("create");
             setEditing(null);
-            setStaffDeptFilter("");
+            setStaffDeptFilter(isDeptManagerStaffView && authDeptId ? authDeptId : "");
             setModalOpen(true);
           }}
           className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-emerald-700"
         >
-          Add user
+          {isDeptManagerStaffView ? "Add team leader" : "Add user"}
         </button>
       </header>
 
       <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="grid gap-3 md:grid-cols-5">
+        <div
+          className={`grid gap-3 ${isDeptManagerStaffView ? "md:grid-cols-2" : "md:grid-cols-5"}`}
+        >
           <label className="text-sm md:col-span-2">
             <div className="mb-1 font-medium">Search</div>
             <input
@@ -269,61 +312,89 @@ export default function OrganizationAdminPage() {
             />
           </label>
 
-          <label className="text-sm">
-            <div className="mb-1 font-medium">Role</div>
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value as UserRole | "")}
-              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
-            >
-              <option value="">All</option>
-              {(["SUPER_ADMIN", "ADMIN", "DEPT_MANAGER", "TEAM_LEADER", "EMPLOYEE"] as UserRole[]).map(
-                (r) => (
+          {!isDeptManagerStaffView && (
+            <label className="text-sm">
+              <div className="mb-1 font-medium">Role</div>
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value as UserRole | "")}
+                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+              >
+                <option value="">All</option>
+                {(
+                  [
+                    "SUPER_ADMIN",
+                    "ADMIN",
+                    "DEPT_MANAGER",
+                    "TEAM_LEADER",
+                    "EMPLOYEE",
+                  ] as UserRole[]
+                ).map((r) => (
                   <option key={r} value={r}>
                     {r}
                   </option>
-                ),
-              )}
-            </select>
-          </label>
+                ))}
+              </select>
+            </label>
+          )}
 
-          <label className="text-sm">
-            <div className="mb-1 font-medium">Department</div>
-            <select
-              value={deptFilter}
-              onChange={(e) => {
-                setDeptFilter(e.target.value);
-                setTeamFilter("");
-              }}
-              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
-            >
-              <option value="">All</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          {!isDeptManagerStaffView && (
+            <label className="text-sm">
+              <div className="mb-1 font-medium">Department</div>
+              <select
+                value={deptFilter}
+                onChange={(e) => {
+                  setDeptFilter(e.target.value);
+                  setTeamFilter("");
+                }}
+                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+              >
+                <option value="">All</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
-          <label className="text-sm">
-            <div className="mb-1 font-medium">Team</div>
-            <select
-              value={teamFilter}
-              onChange={(e) => setTeamFilter(e.target.value)}
-              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
-            >
-              <option value="">All</option>
-              {teamsForDeptFilter.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          {!isDeptManagerStaffView && (
+            <label className="text-sm">
+              <div className="mb-1 font-medium">Team</div>
+              <select
+                value={teamFilter}
+                onChange={(e) => setTeamFilter(e.target.value)}
+                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+              >
+                <option value="">All</option>
+                {teamsForDeptFilter.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
 
-        {(query || roleFilter || deptFilter || teamFilter) && (
+        {isDeptManagerStaffView && query.trim() && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-zinc-500">
+              Showing <span className="font-medium">{filteredRows.length}</span> team leader
+              {filteredRows.length === 1 ? "" : "s"}
+            </p>
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              className="rounded-xl border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-600"
+            >
+              Clear search
+            </button>
+          </div>
+        )}
+
+        {(query || roleFilter || deptFilter || teamFilter) && !isDeptManagerStaffView && (
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-zinc-500">
               Showing <span className="font-medium">{filteredRows.length}</span> / {sortedRows.length}
@@ -418,7 +489,8 @@ export default function OrganizationAdminPage() {
         mode={modalMode}
         initial={editing}
         viewerRole={viewerRole}
-        departments={departments}
+        lockedDepartmentId={isDeptManagerStaffView ? authDeptId ?? undefined : undefined}
+        departments={departmentsForModal}
         teamsForDept={teamsForDept}
         teamsLoading={teamsLoading}
         onDepartmentChange={handleDepartmentChangeForTeams}
@@ -427,12 +499,10 @@ export default function OrganizationAdminPage() {
       />
 
       {deleteTarget && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-          <button
-            type="button"
-            className="absolute inset-0 bg-zinc-950/70"
-            onClick={() => setDeleteTarget(null)}
-          />
+        <ModalScrim
+          onDismiss={() => setDeleteTarget(null)}
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-zinc-950/70 p-4"
+        >
           <div className="relative z-[111] max-w-md rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
             <h3 className="font-semibold">Delete user?</h3>
             <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
@@ -455,7 +525,7 @@ export default function OrganizationAdminPage() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalScrim>
       )}
     </div>
   );

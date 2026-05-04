@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ModalScrim } from "@/components/ModalScrim";
 import type { DepartmentDto, TeamDto, UserDto, UserRole } from "@/lib/types";
 
 export type StaffFormState = {
@@ -21,6 +22,8 @@ type Props = {
   mode: "create" | "edit";
   initial?: UserDto | null;
   viewerRole: UserRole;
+  /** When set (department manager), department is fixed and only TEAM_LEADER accounts are managed. */
+  lockedDepartmentId?: string;
   departments: DepartmentDto[];
   teamsForDept: TeamDto[];
   teamsLoading: boolean;
@@ -30,7 +33,7 @@ type Props = {
   onSubmit: (payload: StaffFormState) => Promise<void>;
 };
 
-function emptyForm(role: UserRole): StaffFormState {
+function emptyForm(role: UserRole, departmentId = ""): StaffFormState {
   return {
     name: "",
     email: "",
@@ -40,7 +43,7 @@ function emptyForm(role: UserRole): StaffFormState {
     status: "ACTIVE",
     password: "",
     role,
-    departmentId: "",
+    departmentId,
     teamId: "",
   };
 }
@@ -65,6 +68,7 @@ export function StaffUserModal({
   mode,
   initial,
   viewerRole,
+  lockedDepartmentId,
   departments,
   teamsForDept,
   teamsLoading,
@@ -72,6 +76,8 @@ export function StaffUserModal({
   onClose,
   onSubmit,
 }: Props) {
+  const teamLeaderOnly = viewerRole === "DEPT_MANAGER" && !!lockedDepartmentId;
+
   const [form, setForm] = useState<StaffFormState>(() =>
     emptyForm("DEPT_MANAGER"),
   );
@@ -79,6 +85,9 @@ export function StaffUserModal({
   const [submitting, setSubmitting] = useState(false);
 
   const roleOptions: UserRole[] = useMemo(() => {
+    if (teamLeaderOnly) {
+      return ["TEAM_LEADER"];
+    }
     if (viewerRole === "SUPER_ADMIN") {
       return [
         "SUPER_ADMIN",
@@ -89,21 +98,26 @@ export function StaffUserModal({
       ];
     }
     return ["ADMIN", "DEPT_MANAGER", "TEAM_LEADER", "EMPLOYEE"];
-  }, [viewerRole]);
+  }, [viewerRole, teamLeaderOnly]);
 
   useEffect(() => {
     if (!open) return;
     if (mode === "edit" && initial) {
       setForm(userToForm(initial));
+    } else if (teamLeaderOnly && lockedDepartmentId) {
+      setForm(emptyForm("TEAM_LEADER", lockedDepartmentId));
     } else {
       setForm(emptyForm("DEPT_MANAGER"));
     }
     setLocalErrors({});
-  }, [open, mode, initial]);
+  }, [open, mode, initial, teamLeaderOnly, lockedDepartmentId]);
 
   useEffect(() => {
     if (!open || !onDepartmentChange) return;
     if (form.role === "EMPLOYEE" && form.departmentId) {
+      onDepartmentChange(form.departmentId);
+    }
+    if (form.role === "TEAM_LEADER" && form.departmentId) {
       onDepartmentChange(form.departmentId);
     }
   }, [open, form.role, form.departmentId, onDepartmentChange]);
@@ -126,8 +140,7 @@ export function StaffUserModal({
       if (!form.teamId) e.teamId = "Team is required for employees";
     } else if (form.role === "TEAM_LEADER") {
       if (!form.departmentId) {
-        e.departmentId =
-          "Department is required (team can be assigned later on the Teams page)";
+        e.departmentId = "Department is required";
       }
     }
     setLocalErrors(e);
@@ -150,16 +163,14 @@ export function StaffUserModal({
     (form.role === "DEPT_MANAGER" ||
       form.role === "TEAM_LEADER" ||
       form.role === "EMPLOYEE");
-  const showTeam = form.role === "EMPLOYEE";
+  const showTeam = form.role === "EMPLOYEE" || form.role === "TEAM_LEADER";
+  const deptLocked = !!lockedDepartmentId && teamLeaderOnly;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto p-4">
-      <button
-        type="button"
-        className="absolute inset-0 bg-zinc-950/60 backdrop-blur-sm"
-        aria-label="Close"
-        onClick={onClose}
-      />
+    <ModalScrim
+      onDismiss={onClose}
+      className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-zinc-950/60 p-4 backdrop-blur-sm"
+    >
       <div
         role="dialog"
         aria-modal="true"
@@ -168,11 +179,18 @@ export function StaffUserModal({
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-xl font-semibold tracking-tight">
-              {mode === "create" ? "Add user" : "Edit user"}
+              {teamLeaderOnly
+                ? mode === "create"
+                  ? "Add team leader"
+                  : "Edit team leader"
+                : mode === "create"
+                  ? "Add user"
+                  : "Edit user"}
             </h2>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Org hierarchy: DEPT_MANAGER → TEAM_LEADER → EMPLOYEE. Assign departments and teams to
-              match API rules.
+              {teamLeaderOnly
+                ? "Create TEAM_LEADER users with your department only; team is optional until you add a team and pick them as leader on the Teams page."
+                : "Org hierarchy: DEPT_MANAGER → TEAM_LEADER → EMPLOYEE. Assign departments and teams to match API rules."}
             </p>
           </div>
           <button
@@ -189,31 +207,34 @@ export function StaffUserModal({
           <Field
             label="Role"
             input={
-              <select
-                className={inputClass(false)}
-                value={form.role}
-                onChange={(x) => {
-                  const newRole = x.target.value as UserRole;
-                  setForm((f) => {
-                    let teamId = f.teamId;
-                    if (newRole !== "EMPLOYEE") teamId = "";
-                    else if (f.role !== "EMPLOYEE") teamId = "";
-                    return {
+              teamLeaderOnly ? (
+                <input
+                  type="text"
+                  readOnly
+                  className={inputClass(false)}
+                  value="TEAM_LEADER"
+                />
+              ) : (
+                <select
+                  className={inputClass(false)}
+                  value={form.role}
+                  onChange={(x) => {
+                    const newRole = x.target.value as UserRole;
+                    setForm((f) => ({
                       ...f,
                       role: newRole,
-                      departmentId:
-                        newRole === "SUPER_ADMIN" ? "" : f.departmentId,
-                      teamId,
-                    };
-                  });
-                }}
-              >
-                {roleOptions.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
+                      departmentId: newRole === "SUPER_ADMIN" ? "" : f.departmentId,
+                      teamId: "",
+                    }));
+                  }}
+                >
+                  {roleOptions.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              )
             }
           />
 
@@ -303,33 +324,48 @@ export function StaffUserModal({
               label="Department"
               error={localErrors.departmentId}
               input={
-                <select
-                  className={inputClass(!!localErrors.departmentId)}
-                  value={form.departmentId}
-                  onChange={(x) => {
-                    const v = x.target.value;
-                    setForm((f) => ({
-                      ...f,
-                      departmentId: v,
-                      teamId: f.role === "EMPLOYEE" ? "" : f.teamId,
-                    }));
-                    onDepartmentChange?.(v);
-                  }}
-                >
-                  <option value="">— Select —</option>
-                  {departments.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name}
-                    </option>
-                  ))}
-                </select>
+                deptLocked ? (
+                  <select
+                    className={inputClass(false)}
+                    value={form.departmentId}
+                    disabled
+                  >
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <select
+                    className={inputClass(!!localErrors.departmentId)}
+                    value={form.departmentId}
+                    onChange={(x) => {
+                      const v = x.target.value;
+                      setForm((f) => ({
+                        ...f,
+                        departmentId: v,
+                        teamId:
+                          f.role === "EMPLOYEE" || f.role === "TEAM_LEADER" ? "" : f.teamId,
+                      }));
+                      onDepartmentChange?.(v);
+                    }}
+                  >
+                    <option value="">— Select —</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                )
               }
             />
           )}
 
           {showTeam && (
             <Field
-              label="Team"
+              label={form.role === "TEAM_LEADER" ? "Team (optional)" : "Team"}
               error={localErrors.teamId}
               input={
                 <select
@@ -341,7 +377,11 @@ export function StaffUserModal({
                   }
                 >
                   <option value="">
-                    {teamsLoading ? "Loading…" : "— Select team —"}
+                    {teamsLoading
+                      ? "Loading…"
+                      : form.role === "TEAM_LEADER"
+                        ? "— No team yet —"
+                        : "— Select team —"}
                   </option>
                   {teamsForDept.map((t) => (
                     <option key={t.id} value={t.id}>
@@ -387,7 +427,7 @@ export function StaffUserModal({
           </div>
         </form>
       </div>
-    </div>
+    </ModalScrim>
   );
 }
 

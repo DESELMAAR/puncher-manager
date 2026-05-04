@@ -1,10 +1,15 @@
 package com.punchermanager.service;
 
+import jakarta.annotation.PreDestroy;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -17,12 +22,50 @@ public class SseNotificationBroadcaster {
 
   private final Map<UUID, CopyOnWriteArrayList<SseEmitter>> subscribers = new ConcurrentHashMap<>();
 
+  /** Comment frames keep intermediaries from treating the stream as idle and closing it. */
+  private final ScheduledExecutorService heartbeat =
+      Executors.newSingleThreadScheduledExecutor(
+          r -> {
+            Thread t = new Thread(r, "sse-notification-heartbeat");
+            t.setDaemon(true);
+            return t;
+          });
+
+  public SseNotificationBroadcaster() {
+    heartbeat.scheduleAtFixedRate(this::pingAll, 15, 15, TimeUnit.SECONDS);
+  }
+
+  @PreDestroy
+  public void shutdown() {
+    heartbeat.shutdownNow();
+  }
+
+  private void pingAll() {
+    for (Map.Entry<UUID, CopyOnWriteArrayList<SseEmitter>> e : subscribers.entrySet()) {
+      UUID userId = e.getKey();
+      for (SseEmitter emitter : new ArrayList<>(e.getValue())) {
+        try {
+          emitter.send(SseEmitter.event().comment("ping"));
+        } catch (Exception ex) {
+          log.debug("SSE heartbeat failed, removing subscriber", ex);
+          remove(userId, emitter);
+        }
+      }
+    }
+  }
+
   public SseEmitter subscribe(UUID userId) {
     SseEmitter emitter = new SseEmitter(0L);
     subscribers.computeIfAbsent(userId, k -> new CopyOnWriteArrayList<>()).add(emitter);
     emitter.onCompletion(() -> remove(userId, emitter));
     emitter.onTimeout(() -> remove(userId, emitter));
-    emitter.onError(e -> remove(userId, emitter));
+    emitter.onError(err -> remove(userId, emitter));
+    try {
+      emitter.send(SseEmitter.event().comment("connected"));
+    } catch (IOException e) {
+      log.debug("SSE initial comment failed", e);
+      remove(userId, emitter);
+    }
     return emitter;
   }
 

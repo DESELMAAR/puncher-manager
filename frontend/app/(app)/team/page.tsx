@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { extractApiMessage } from "@/lib/errors";
@@ -358,6 +358,20 @@ export default function TeamPage() {
   const [lateGraceMinutesInput, setLateGraceMinutesInput] = useState<string>("");
   const [allowedLunchMinutesInput, setAllowedLunchMinutesInput] = useState<string>("");
   const [allowedBreaksMinutesInput, setAllowedBreaksMinutesInput] = useState<string>("");
+  const [otherSettingsOpen, setOtherSettingsOpen] = useState(false);
+  const otherSettingsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!otherSettingsOpen) return;
+    function onPointerDown(ev: PointerEvent) {
+      const t = ev.target;
+      if (!(t instanceof Node)) return;
+      if (otherSettingsRef.current?.contains(t)) return;
+      setOtherSettingsOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, [otherSettingsOpen]);
 
   const loadTeamsForDepartment = useCallback(async (deptId: string) => {
     const { data } = await api.get<TeamDto[]>(`/api/teams/department/${deptId}`);
@@ -509,6 +523,7 @@ export default function TeamPage() {
         data.lateGraceMinutes != null ? String(data.lateGraceMinutes) : "",
       );
       toast.success("Grace time updated");
+      setOtherSettingsOpen(false);
     } catch (e) {
       toast.error(extractApiMessage(e));
     }
@@ -549,6 +564,7 @@ export default function TeamPage() {
         data.allowedBreaksMinutes != null ? String(data.allowedBreaksMinutes) : "",
       );
       toast.success("Allowed durations updated");
+      setOtherSettingsOpen(false);
     } catch (e) {
       toast.error(extractApiMessage(e));
     }
@@ -699,6 +715,12 @@ export default function TeamPage() {
     return m;
   }, [departments]);
 
+  function toastIfOverviewBlocksDeptTeam() {
+    if (!overviewMode) return false;
+    toast.info(t("attendance.uncheckOverviewForDeptTeamFilters"));
+    return true;
+  }
+
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">{t("team.title")}</h1>
@@ -717,7 +739,10 @@ export default function TeamPage() {
           {t("label.department")}{" "}
           <select
             value={selectedDeptId ?? ""}
-            onChange={(e) => void onDepartmentChange(e.target.value)}
+            onChange={(e) => {
+              if (toastIfOverviewBlocksDeptTeam()) return;
+              void onDepartmentChange(e.target.value);
+            }}
             className="ml-2 min-w-[12rem] rounded border border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800"
           >
             {departments.map((d) => (
@@ -734,7 +759,10 @@ export default function TeamPage() {
           {t("label.team")}{" "}
           <select
             value={selectedTeam ?? ""}
-            onChange={(e) => setSelectedTeam(e.target.value)}
+            onChange={(e) => {
+              if (toastIfOverviewBlocksDeptTeam()) return;
+              setSelectedTeam(e.target.value);
+            }}
             className="ml-2 rounded border border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800"
           >
             {teams.map((t) => (
@@ -806,56 +834,104 @@ export default function TeamPage() {
           )}
         </label>
         {canEditLateGrace && (selectedDeptId ?? departmentId) && (
-          <span className="inline-flex flex-wrap items-center gap-2 text-sm">
-            <span>Grace (min)</span>
-            <input
-              type="number"
-              min={0}
-              max={120}
-              value={lateGraceMinutesInput}
-              onChange={(e) => setLateGraceMinutesInput(e.target.value)}
-              className="w-20 rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600 dark:bg-zinc-800"
-              placeholder="10"
-            />
+          <div ref={otherSettingsRef} className="relative">
             <button
               type="button"
-              onClick={() => void saveLateGraceMinutes()}
-              className="rounded-lg border border-zinc-300 px-3 py-1 text-sm dark:border-zinc-600"
+              aria-expanded={otherSettingsOpen}
+              aria-haspopup="dialog"
+              onClick={() => setOtherSettingsOpen((v) => !v)}
+              className="flex items-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
             >
-              Save
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className={`h-4 w-4 shrink-0 text-zinc-500 transition-transform ${
+                  otherSettingsOpen ? "rotate-180" : ""
+                }`}
+                aria-hidden
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              {t("attendance.otherSettings")}
             </button>
-          </span>
-        )}
-        {canEditLateGrace && (selectedDeptId ?? departmentId) && (
-          <span className="inline-flex flex-wrap items-center gap-2 text-sm">
-            <span>Allowed lunch (min)</span>
-            <input
-              type="number"
-              min={0}
-              max={300}
-              value={allowedLunchMinutesInput}
-              onChange={(e) => setAllowedLunchMinutesInput(e.target.value)}
-              className="w-20 rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600 dark:bg-zinc-800"
-              placeholder="30"
-            />
-            <span>Allowed breaks (min)</span>
-            <input
-              type="number"
-              min={0}
-              max={300}
-              value={allowedBreaksMinutesInput}
-              onChange={(e) => setAllowedBreaksMinutesInput(e.target.value)}
-              className="w-20 rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600 dark:bg-zinc-800"
-              placeholder="20"
-            />
-            <button
-              type="button"
-              onClick={() => void saveAllowedDurations()}
-              className="rounded-lg border border-zinc-300 px-3 py-1 text-sm dark:border-zinc-600"
+            {otherSettingsOpen && (
+            <div
+              role="dialog"
+              aria-label={t("attendance.otherSettings")}
+              className="absolute left-0 z-30 mt-1 min-w-[min(20rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-xl border border-zinc-200 bg-white p-4 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
             >
-              Save
-            </button>
-          </span>
+              <div className="flex flex-col gap-4 text-sm">
+                <div className="flex flex-wrap items-end gap-2">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                      Grace (min)
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={120}
+                      value={lateGraceMinutesInput}
+                      onChange={(e) => setLateGraceMinutesInput(e.target.value)}
+                      className="w-24 rounded border border-zinc-300 px-2 py-1.5 dark:border-zinc-600 dark:bg-zinc-800"
+                      placeholder="10"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => void saveLateGraceMinutes()}
+                    className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-600"
+                  >
+                    Save
+                  </button>
+                </div>
+                <div className="border-t border-zinc-100 pt-4 dark:border-zinc-800">
+                  <div className="flex flex-wrap items-end gap-2">
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                        Allowed lunch (min)
+                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={300}
+                        value={allowedLunchMinutesInput}
+                        onChange={(e) => setAllowedLunchMinutesInput(e.target.value)}
+                        className="w-24 rounded border border-zinc-300 px-2 py-1.5 dark:border-zinc-600 dark:bg-zinc-800"
+                        placeholder="30"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                        Allowed breaks (min)
+                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={300}
+                        value={allowedBreaksMinutesInput}
+                        onChange={(e) => setAllowedBreaksMinutesInput(e.target.value)}
+                        className="w-24 rounded border border-zinc-300 px-2 py-1.5 dark:border-zinc-600 dark:bg-zinc-800"
+                        placeholder="20"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => void saveAllowedDurations()}
+                      className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-600"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            )}
+          </div>
         )}
         <button
           type="button"

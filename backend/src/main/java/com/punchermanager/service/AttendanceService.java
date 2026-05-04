@@ -507,7 +507,7 @@ public class AttendanceService {
   private record ScheduleVsPlanResult(boolean ok, String note) {}
 
   /**
-   * Compares {@link PlanningService} day plan (weekly schedule or mock) to first {@link
+   * Compares {@link PlanningService} day plan (confirmed weekly schedule only) to first {@link
    * PunchType#WORK_START} and last {@link PunchType#LOGOUT} for the calendar day.
    */
   private ScheduleVsPlanResult verifyScheduleVsPunches(
@@ -518,6 +518,7 @@ public class AttendanceService {
       int graceMinutes) {
 
     var planOpt = planningService.getPlannedDay(employeeId, date);
+    boolean weekConfirmed = planningService.hasConfirmedScheduleForWeek(employeeId, date);
 
     PunchResponse firstWorkStart =
         sortedPunches.stream().filter(p -> p.type() == PunchType.WORK_START).findFirst().orElse(null);
@@ -532,13 +533,23 @@ public class AttendanceService {
 
     if (planOpt.isEmpty()) {
       if (firstWorkStart != null) {
+        if (weekConfirmed) {
+          return new ScheduleVsPlanResult(
+              false,
+              "Punched on scheduled day off (WORK_START "
+                  + fmtInstantLocal(firstWorkStart.punchedAt(), zone)
+                  + ")");
+        }
         return new ScheduleVsPlanResult(
             false,
-            "Punched on scheduled day off (WORK_START "
+            "WORK_START with no confirmed weekly schedule for this week ("
                 + fmtInstantLocal(firstWorkStart.punchedAt(), zone)
                 + ")");
       }
-      return new ScheduleVsPlanResult(true, "OK (day off)");
+      if (weekConfirmed) {
+        return new ScheduleVsPlanResult(true, "OK (day off)");
+      }
+      return new ScheduleVsPlanResult(true, "No confirmed weekly schedule for this week (not evaluated)");
     }
 
     PlanningResponseDto plan = planOpt.get();

@@ -139,18 +139,45 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     if (!token) return;
-    const url = `${baseURL}/api/notification/stream?access_token=${encodeURIComponent(token)}`;
-    const es = new EventSource(url);
-    es.addEventListener("notification", (ev) => {
-      try {
-        const n = JSON.parse((ev as MessageEvent).data) as NotificationDto;
-        setItems((prev) => [n, ...prev]);
-      } catch {
-        void load();
-      }
-    });
-    es.onerror = () => setHint("SSE disconnected — refresh to reload list.");
-    return () => es.close();
+    let cancelled = false;
+    let es: EventSource | null = null;
+    let reconnectTimer: number | undefined;
+    let attempt = 0;
+
+    const connect = () => {
+      if (cancelled) return;
+      es?.close();
+      const url = `${baseURL}/api/notification/stream?access_token=${encodeURIComponent(token)}`;
+      es = new EventSource(url);
+      es.addEventListener("open", () => {
+        attempt = 0;
+        setHint(null);
+      });
+      es.addEventListener("notification", (ev) => {
+        try {
+          const n = JSON.parse((ev as MessageEvent).data) as NotificationDto;
+          setItems((prev) => [n, ...prev]);
+        } catch {
+          void load();
+        }
+      });
+      es.onerror = () => {
+        es?.close();
+        es = null;
+        if (cancelled) return;
+        setHint("Live updates paused — reconnecting…");
+        const delay = Math.min(60_000, 1000 * 2 ** Math.min(attempt, 8));
+        attempt += 1;
+        reconnectTimer = window.setTimeout(connect, delay);
+      };
+    };
+
+    connect();
+    return () => {
+      cancelled = true;
+      if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer);
+      es?.close();
+    };
   }, [token, baseURL]);
 
   async function markRead(id: string) {

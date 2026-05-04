@@ -1,6 +1,10 @@
 spring:
   application:
     name: puncher-manager
+  # Long-lived SSE (/api/notification/stream): avoid Tomcat/async cutting the stream at ~30s idle.
+  mvc:
+    async:
+      request-timeout: 24h
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:puncher_db}
     username: ${DB_USER:postgres}

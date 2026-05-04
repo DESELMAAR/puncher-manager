@@ -45,6 +45,8 @@ export type I18nKey =
   | "attendance.range"
   | "attendance.noTeams"
   | "attendance.noMatches"
+  | "attendance.otherSettings"
+  | "attendance.uncheckOverviewForDeptTeamFilters"
   | "table.date"
   | "table.employee"
   | "table.status"
@@ -99,6 +101,9 @@ const dict: Record<Language, Record<I18nKey, string>> = {
     "attendance.range": "Range (up to 2 months)",
     "attendance.noTeams": "No teams available for your scope.",
     "attendance.noMatches": "No matching employees.",
+    "attendance.otherSettings": "Other settings",
+    "attendance.uncheckOverviewForDeptTeamFilters":
+      "Uncheck “Overview (all teams)” to choose a department or team.",
     "table.date": "Date",
     "table.employee": "Employee",
     "table.status": "Status",
@@ -152,6 +157,9 @@ const dict: Record<Language, Record<I18nKey, string>> = {
     "attendance.range": "Période (jusqu’à 2 mois)",
     "attendance.noTeams": "Aucune équipe disponible dans votre périmètre.",
     "attendance.noMatches": "Aucun employé correspondant.",
+    "attendance.otherSettings": "Autres paramètres",
+    "attendance.uncheckOverviewForDeptTeamFilters":
+      "Décochez « Vue d’ensemble (toutes les équipes) » pour choisir un département ou une équipe.",
     "table.date": "Date",
     "table.employee": "Employé",
     "table.status": "Statut",
@@ -205,6 +213,9 @@ const dict: Record<Language, Record<I18nKey, string>> = {
     "attendance.range": "Rango (hasta 2 meses)",
     "attendance.noTeams": "No hay equipos disponibles en tu alcance.",
     "attendance.noMatches": "No hay empleados coincidentes.",
+    "attendance.otherSettings": "Otros ajustes",
+    "attendance.uncheckOverviewForDeptTeamFilters":
+      "Desmarca « Resumen (todos los equipos) » para elegir departamento o equipo.",
     "table.date": "Fecha",
     "table.employee": "Empleado",
     "table.status": "Estado",

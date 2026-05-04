@@ -10,7 +10,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -58,8 +60,12 @@ public class NotificationController {
   }
 
   @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-  public SseEmitter stream(HttpServletRequest http) {
+  public ResponseEntity<SseEmitter> stream(HttpServletRequest http) {
     User user = userContextService.requireCurrentUser(http);
-    return broadcaster.subscribe(user.getId());
+    SseEmitter emitter = broadcaster.subscribe(user.getId());
+    return ResponseEntity.ok()
+        .cacheControl(CacheControl.noStore())
+        .header("X-Accel-Buffering", "no")
+        .body(emitter);
   }
 }

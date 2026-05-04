@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Toaster } from "sonner";
 import { useUiStore, type BackgroundTheme } from "@/store/uiStore";
 import { useI18nStore, type Language } from "@/store/i18nStore";
@@ -12,8 +12,24 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const setTheme = useUiStore((s) => s.setBackgroundTheme);
   const [open, setOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
+  const themeMenuRef = useRef<HTMLDivElement>(null);
+  const langMenuRef = useRef<HTMLDivElement>(null);
   const lang = useI18nStore((s) => s.lang);
   const setLang = useI18nStore((s) => s.setLang);
+
+  useEffect(() => {
+    if (!open && !langOpen) return;
+    function onPointerDown(ev: PointerEvent) {
+      const t = ev.target;
+      if (!(t instanceof Node)) return;
+      if (themeMenuRef.current?.contains(t)) return;
+      if (langMenuRef.current?.contains(t)) return;
+      setOpen(false);
+      setLangOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, [open, langOpen]);
 
   useEffect(() => {
     const saved = localStorage.getItem("puncher-theme");
@@ -92,7 +108,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           )}
         </div>
 
-        <div className="relative">
+        <div ref={langMenuRef} className="relative">
           <button
             type="button"
             onClick={() => setLangOpen((v) => !v)}

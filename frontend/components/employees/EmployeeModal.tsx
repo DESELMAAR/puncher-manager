@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ModalScrim } from "@/components/ModalScrim";
 import type { UserDto, UserRole } from "@/lib/types";
 
 export type EmployeeFormState = {
@@ -43,6 +44,8 @@ type Props = {
   mode: "create" | "edit";
   initial?: UserDto | null;
   viewerRole: UserRole;
+  /** Row being created/edited: employee vs team leader (department managers can manage both). */
+  personKind: "EMPLOYEE" | "TEAM_LEADER";
   teamOptions: { id: string; name: string }[];
   /** When only one team (team leader), hide team selector */
   lockTeam?: boolean;
@@ -55,6 +58,7 @@ export function EmployeeModal({
   mode,
   initial,
   viewerRole,
+  personKind,
   teamOptions,
   lockTeam,
   onClose,
@@ -70,10 +74,12 @@ export function EmployeeModal({
     if (mode === "edit" && initial) {
       setForm(userToForm(initial));
     } else {
-      setForm(emptyForm(lockTeam ? defaultTeam : defaultTeam));
+      const initialTeam =
+        personKind === "TEAM_LEADER" ? "" : defaultTeam;
+      setForm(emptyForm(lockTeam ? defaultTeam : initialTeam));
     }
     setLocalErrors({});
-  }, [open, mode, initial, lockTeam, defaultTeam]);
+  }, [open, mode, initial, lockTeam, defaultTeam, personKind]);
 
   if (!open) return null;
 
@@ -82,7 +88,9 @@ export function EmployeeModal({
     if (!form.name.trim()) e.name = "Name is required";
     if (!form.email.trim()) e.email = "Email is required";
     if (!form.employeeId.trim()) e.employeeId = "Employee ID is required";
-    if (!form.teamId) e.teamId = "Team is required";
+    if (personKind === "EMPLOYEE" && !form.teamId) {
+      e.teamId = "Team is required";
+    }
     if (mode === "create" && !form.password.trim()) {
       e.password = "Temporary password is required for new accounts";
     }
@@ -101,16 +109,16 @@ export function EmployeeModal({
     }
   }
 
-  const showTeamSelect = teamOptions.length > 1 || (!lockTeam && teamOptions.length === 1);
+  const showTeamSelect =
+    personKind === "TEAM_LEADER"
+      ? !lockTeam
+      : teamOptions.length > 1 || (!lockTeam && teamOptions.length === 1);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <button
-        type="button"
-        className="absolute inset-0 bg-zinc-950/60 backdrop-blur-sm"
-        aria-label="Close"
-        onClick={onClose}
-      />
+    <ModalScrim
+      onDismiss={onClose}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/60 p-4 backdrop-blur-sm"
+    >
       <div
         role="dialog"
         aria-modal="true"
@@ -119,12 +127,20 @@ export function EmployeeModal({
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-xl font-semibold tracking-tight">
-              {mode === "create" ? "Add employee" : "Edit employee"}
+              {mode === "create"
+                ? personKind === "TEAM_LEADER"
+                  ? "Add team leader"
+                  : "Add employee"
+                : personKind === "TEAM_LEADER"
+                  ? "Edit team leader"
+                  : "Edit employee"}
             </h2>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
               {viewerRole === "TEAM_LEADER"
                 ? "Employees are created in your team only."
-                : "Role is fixed to Employee for this form."}
+                : personKind === "TEAM_LEADER"
+                  ? "Team leader accounts must be assigned to a team (department follows the team)."
+                  : "Role is fixed to Employee for this form."}
             </p>
           </div>
           <button
@@ -217,21 +233,31 @@ export function EmployeeModal({
 
           {showTeamSelect && (
             <Field
-              label="Team"
+              label={personKind === "TEAM_LEADER" ? "Team (optional)" : "Team"}
               error={localErrors.teamId}
               input={
-                <select
-                  className={inputClass(!!localErrors.teamId)}
-                  value={form.teamId}
-                  disabled={!!lockTeam}
-                  onChange={(x) => setForm((f) => ({ ...f, teamId: x.target.value }))}
-                >
-                  {teamOptions.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
+                teamOptions.length === 0 && personKind === "TEAM_LEADER" ? (
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                    No teams in this department yet. Save without a team, then create a team on the
+                    Teams page and select this person as leader.
+                  </p>
+                ) : (
+                  <select
+                    className={inputClass(!!localErrors.teamId)}
+                    value={form.teamId}
+                    disabled={!!lockTeam}
+                    onChange={(x) => setForm((f) => ({ ...f, teamId: x.target.value }))}
+                  >
+                    {personKind === "TEAM_LEADER" && (
+                      <option value="">— No team yet —</option>
+                    )}
+                    {teamOptions.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                )
               }
             />
           )}
@@ -264,12 +290,18 @@ export function EmployeeModal({
               disabled={submitting}
               className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-900/20 hover:bg-emerald-700 disabled:opacity-50"
             >
-              {submitting ? "Saving…" : mode === "create" ? "Create employee" : "Save changes"}
+              {submitting
+                ? "Saving…"
+                : mode === "create"
+                  ? personKind === "TEAM_LEADER"
+                    ? "Create team leader"
+                    : "Create employee"
+                  : "Save changes"}
             </button>
           </div>
         </form>
       </div>
-    </div>
+    </ModalScrim>
   );
 }
 

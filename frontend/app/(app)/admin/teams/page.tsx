@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { extractApiMessage } from "@/lib/errors";
 import type { DepartmentDto, TeamDto, UserDto } from "@/lib/types";
+import { ModalScrim } from "@/components/ModalScrim";
 import { useAuthStore } from "@/store/authStore";
 
 export default function TeamsAdminPage() {
@@ -78,13 +79,21 @@ export default function TeamsAdminPage() {
     void loadTeams();
   }, [loadTeams]);
 
-  const teamLeadersInDept = useMemo(() => {
-    return users.filter(
-      (u) =>
-        u.role === "TEAM_LEADER" &&
-        u.departmentId === effectiveDeptId,
-    );
-  }, [users, effectiveDeptId]);
+  /** Leaders available to attach: same department, not already on another team (edit: keep current leader). */
+  const teamLeaderCandidates = useMemo(() => {
+    const deptId =
+      viewerRole === "DEPT_MANAGER"
+        ? effectiveDeptId
+        : form.departmentId || effectiveDeptId;
+    if (!deptId) return [];
+    return users.filter((u) => {
+      if (u.role !== "TEAM_LEADER" || u.departmentId !== deptId) return false;
+      if (editing) {
+        return !u.teamId || u.teamId === editing.id;
+      }
+      return !u.teamId;
+    });
+  }, [users, viewerRole, effectiveDeptId, form.departmentId, editing]);
 
   const userNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -170,12 +179,13 @@ export default function TeamsAdminPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Teams</h1>
           <p className="mt-2 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
-            Each team belongs to a department and has a{" "}
+            Each team has a{" "}
             <code className="rounded bg-zinc-200 px-1 text-xs dark:bg-zinc-800">
               TEAM_LEADER
             </code>{" "}
-            assigned. Department managers create teams in their department; Super Admin and Admin can
-            manage any department.
+            who is already in that department (create them in Staff & roles or Employees without a
+            team first, then pick them here). Department managers create teams in their department;
+            Super Admin and Admin can manage any department.
           </p>
         </div>
         <button
@@ -275,13 +285,10 @@ export default function TeamsAdminPage() {
       )}
 
       {modalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <button
-            type="button"
-            className="absolute inset-0 bg-zinc-950/60 backdrop-blur-sm"
-            aria-label="Close"
-            onClick={() => setModalOpen(false)}
-          />
+        <ModalScrim
+          onDismiss={() => setModalOpen(false)}
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/60 p-4 backdrop-blur-sm"
+        >
           <div className="relative z-[101] w-full max-w-lg rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900">
             <h2 className="text-xl font-semibold">
               {editing ? "Edit team" : "New team"}
@@ -324,23 +331,20 @@ export default function TeamsAdminPage() {
                   }
                 >
                   <option value="">— Select —</option>
-                  {(viewerRole === "DEPT_MANAGER" ? teamLeadersInDept : users.filter(
-                    (u) =>
-                      u.role === "TEAM_LEADER" &&
-                      u.departmentId === (form.departmentId || effectiveDeptId),
-                  )).map((u) => (
+                  {teamLeaderCandidates.map((u) => (
                     <option key={u.id} value={u.id}>
                       {u.name} ({u.email})
                     </option>
                   ))}
                 </select>
               </label>
-              {teamLeadersInDept.length === 0 &&
-                viewerRole === "DEPT_MANAGER" && (
-                  <p className="text-xs text-amber-700 dark:text-amber-300">
-                    Create a user with role TEAM_LEADER in your department first (Staff & roles).
-                  </p>
-                )}
+              {teamLeaderCandidates.length === 0 && !!effectiveDeptId && (
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  {viewerRole === "DEPT_MANAGER"
+                    ? "Add a TEAM_LEADER in Staff & roles (team optional), then create the team here."
+                    : "Add a TEAM_LEADER in that department without an existing team, or pick a department above."}
+                </p>
+              )}
             </div>
             <div className="mt-6 flex justify-end gap-2">
               <button
@@ -359,16 +363,14 @@ export default function TeamsAdminPage() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalScrim>
       )}
 
       {deleteTarget && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-          <button
-            type="button"
-            className="absolute inset-0 bg-zinc-950/70"
-            onClick={() => setDeleteTarget(null)}
-          />
+        <ModalScrim
+          onDismiss={() => setDeleteTarget(null)}
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-zinc-950/70 p-4"
+        >
           <div className="relative z-[111] max-w-md rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
             <h3 className="font-semibold">Delete team?</h3>
             <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
@@ -391,7 +393,7 @@ export default function TeamsAdminPage() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalScrim>
       )}
     </div>
   );

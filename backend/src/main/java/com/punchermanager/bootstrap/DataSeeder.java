@@ -3,21 +3,29 @@ package com.punchermanager.bootstrap;
 import com.punchermanager.domain.Department;
 import com.punchermanager.domain.Punch;
 import com.punchermanager.domain.PunchType;
+import com.punchermanager.domain.ScheduleConfirmation;
+import com.punchermanager.domain.ScheduleConfirmationStatus;
 import com.punchermanager.domain.Team;
 import com.punchermanager.domain.User;
 import com.punchermanager.domain.UserRole;
 import com.punchermanager.domain.UserStatus;
+import com.punchermanager.domain.WeeklySchedule;
+import com.punchermanager.domain.WeeklyScheduleDay;
 import com.punchermanager.repository.DepartmentRepository;
 import com.punchermanager.repository.PunchRepository;
+import com.punchermanager.repository.ScheduleConfirmationRepository;
 import com.punchermanager.repository.TeamRepository;
 import com.punchermanager.repository.UserRepository;
+import com.punchermanager.repository.WeeklyScheduleRepository;
 import com.punchermanager.service.AttendanceService;
+import com.punchermanager.service.ScheduleService;
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -40,6 +48,8 @@ public class DataSeeder implements ApplicationRunner {
   private final DepartmentRepository departmentRepository;
   private final TeamRepository teamRepository;
   private final PunchRepository punchRepository;
+  private final WeeklyScheduleRepository weeklyScheduleRepository;
+  private final ScheduleConfirmationRepository scheduleConfirmationRepository;
   private final AttendanceService attendanceService;
   private final PasswordEncoder passwordEncoder;
 
@@ -48,12 +58,16 @@ public class DataSeeder implements ApplicationRunner {
       DepartmentRepository departmentRepository,
       TeamRepository teamRepository,
       PunchRepository punchRepository,
+      WeeklyScheduleRepository weeklyScheduleRepository,
+      ScheduleConfirmationRepository scheduleConfirmationRepository,
       AttendanceService attendanceService,
       PasswordEncoder passwordEncoder) {
     this.userRepository = userRepository;
     this.departmentRepository = departmentRepository;
     this.teamRepository = teamRepository;
     this.punchRepository = punchRepository;
+    this.weeklyScheduleRepository = weeklyScheduleRepository;
+    this.scheduleConfirmationRepository = scheduleConfirmationRepository;
     this.attendanceService = attendanceService;
     this.passwordEncoder = passwordEncoder;
   }
@@ -147,7 +161,7 @@ public class DataSeeder implements ApplicationRunner {
 
   /**
    * Extra fictional teams, leaders, and punch + attendance rows for studying Team attendance /
-   * lateness (mock schedule Mon–Fri 09:00–17:00 when no weekly schedule exists).
+   * lateness (confirmed weekly schedule Mon–Fri 09:00–17:00 for the study week).
    */
   private void seedFictionalStudyAttendance() {
     Department engineering =
@@ -156,6 +170,11 @@ public class DataSeeder implements ApplicationRunner {
             .orElseThrow(() -> new IllegalStateException("Engineering department missing"));
     ZoneId zone = ZoneId.systemDefault();
     LocalDate studyDay = previousWeekday(LocalDate.now(zone));
+    User scheduleAuthor =
+        userRepository
+            .findByEmail("superadmin@puncher.com")
+            .orElseThrow(
+                () -> new IllegalStateException("superadmin@puncher.com required for study schedules"));
 
     log.info(
         "Seeding study attendance demo for {} ({}) — passwords: {}",
@@ -211,8 +230,10 @@ public class DataSeeder implements ApplicationRunner {
                 "Sam Rivera (late start)",
                 "sam.nebula@study.local",
                 "STUDY-LATE-01");
-        seedShiftWithEvaluation(onTime, studyDay, zone, LocalTime.of(9, 0), LocalTime.of(17, 0));
-        seedShiftWithEvaluation(late, studyDay, zone, LocalTime.of(9, 25), LocalTime.of(17, 0));
+        seedShiftWithEvaluation(
+            onTime, studyDay, zone, LocalTime.of(9, 0), LocalTime.of(17, 0), scheduleAuthor);
+        seedShiftWithEvaluation(
+            late, studyDay, zone, LocalTime.of(9, 25), LocalTime.of(17, 0), scheduleAuthor);
       } else if (spec.teamName.equals("Polaris Patrol")) {
         User onTime =
             employee(
@@ -228,8 +249,10 @@ public class DataSeeder implements ApplicationRunner {
                 "Taylor Brooks (late start)",
                 "taylor.polaris@study.local",
                 "STUDY-LATE-02");
-        seedShiftWithEvaluation(onTime, studyDay, zone, LocalTime.of(9, 0), LocalTime.of(17, 0));
-        seedShiftWithEvaluation(late, studyDay, zone, LocalTime.of(9, 18), LocalTime.of(17, 0));
+        seedShiftWithEvaluation(
+            onTime, studyDay, zone, LocalTime.of(9, 0), LocalTime.of(17, 0), scheduleAuthor);
+        seedShiftWithEvaluation(
+            late, studyDay, zone, LocalTime.of(9, 18), LocalTime.of(17, 0), scheduleAuthor);
       } else {
         User onTime =
             employee(
@@ -252,9 +275,12 @@ public class DataSeeder implements ApplicationRunner {
                 "River Santos (very late)",
                 "river.quantum@study.local",
                 "STUDY-LATE-03");
-        seedShiftWithEvaluation(onTime, studyDay, zone, LocalTime.of(9, 0), LocalTime.of(17, 0));
-        seedShiftWithEvaluation(grace, studyDay, zone, LocalTime.of(9, 8), LocalTime.of(17, 0));
-        seedShiftWithEvaluation(late, studyDay, zone, LocalTime.of(9, 52), LocalTime.of(17, 15));
+        seedShiftWithEvaluation(
+            onTime, studyDay, zone, LocalTime.of(9, 0), LocalTime.of(17, 0), scheduleAuthor);
+        seedShiftWithEvaluation(
+            grace, studyDay, zone, LocalTime.of(9, 8), LocalTime.of(17, 0), scheduleAuthor);
+        seedShiftWithEvaluation(
+            late, studyDay, zone, LocalTime.of(9, 52), LocalTime.of(17, 15), scheduleAuthor);
       }
     }
 
@@ -290,16 +316,54 @@ public class DataSeeder implements ApplicationRunner {
   }
 
   /**
-   * Minimal valid day: WORK_START + LOGOUT, then attendance evaluation (matches Planning mock 09:00
-   * expected).
+   * Minimal valid day: WORK_START + LOGOUT, then attendance evaluation (expects confirmed weekly
+   * schedule 09:00–17:00 Mon–Fri for that week).
    */
   private void seedShiftWithEvaluation(
-      User employee, LocalDate day, ZoneId zone, LocalTime workStart, LocalTime logout) {
+      User employee,
+      LocalDate day,
+      ZoneId zone,
+      LocalTime workStart,
+      LocalTime logout,
+      User scheduleAuthor) {
+    ensureConfirmedStandardWeek(employee, day, scheduleAuthor);
     Instant ws = day.atTime(workStart).atZone(zone).toInstant();
     Instant lo = day.atTime(logout).atZone(zone).toInstant();
     savePunch(employee, ws, PunchType.WORK_START);
     savePunch(employee, lo, PunchType.LOGOUT);
     attendanceService.evaluateAfterLogout(employee, day);
+  }
+
+  /** Sun-start week, Mon–Fri 09:00–17:00, weekends off; idempotent if a schedule row exists. */
+  private void ensureConfirmedStandardWeek(User employee, LocalDate anyDayInWeek, User createdBy) {
+    LocalDate weekStart = ScheduleService.normalizeWeekStart(anyDayInWeek);
+    if (weeklyScheduleRepository.findByEmployeeAndWeekFetched(employee.getId(), weekStart).isPresent()) {
+      return;
+    }
+    WeeklySchedule s = new WeeklySchedule();
+    s.setEmployee(employee);
+    s.setWeekStart(weekStart);
+    s.setCreatedBy(createdBy);
+    for (int dow = 0; dow <= 6; dow++) {
+      WeeklyScheduleDay d = new WeeklyScheduleDay();
+      d.setSchedule(s);
+      d.setDayOfWeek(dow);
+      if (dow == 0 || dow == 6) {
+        d.setDayOff(true);
+      } else {
+        d.setDayOff(false);
+        d.setStartTime(LocalTime.of(9, 0));
+        d.setEndTime(LocalTime.of(17, 0));
+      }
+      s.getDays().add(d);
+    }
+    WeeklySchedule saved = weeklyScheduleRepository.save(s);
+    ScheduleConfirmation c = new ScheduleConfirmation();
+    c.setSchedule(saved);
+    c.setEmployee(employee);
+    c.setStatus(ScheduleConfirmationStatus.CONFIRMED);
+    c.setRespondedAt(Instant.now());
+    scheduleConfirmationRepository.save(c);
   }
 
   private void savePunch(User user, Instant when, PunchType type) {
@@ -341,12 +405,35 @@ public class DataSeeder implements ApplicationRunner {
     LocalDate start = LocalDate.now(zone).minusDays(62);
     LocalDate end = LocalDate.now(zone).plusDays(35); // ~5 weeks ahead, weekends skipped
 
+    User scheduleAuthor =
+        userRepository
+            .findByEmail("superadmin@puncher.com")
+            .orElseGet(
+                () ->
+                    userRepository.findAll().stream()
+                        .filter(x -> x.getRole() == UserRole.SUPER_ADMIN)
+                        .findFirst()
+                        .orElse(null));
+    if (scheduleAuthor == null) {
+      log.warn("No Super Admin user: demo punches will not get attendance from confirmed schedules");
+    }
+
     int seeded = 0;
     int skipped = 0;
     for (String empId : empIds) {
       Optional<User> opt = userRepository.findByEmployeeId(empId);
       if (opt.isEmpty()) continue;
       User u = opt.get();
+
+      if (scheduleAuthor != null && u.getRole() == UserRole.EMPLOYEE) {
+        HashSet<LocalDate> weeks = new HashSet<>();
+        for (LocalDate day = start; !day.isAfter(end); day = day.plusDays(1)) {
+          weeks.add(ScheduleService.normalizeWeekStart(day));
+        }
+        for (LocalDate ws : weeks) {
+          ensureConfirmedStandardWeek(u, ws, scheduleAuthor);
+        }
+      }
 
       for (LocalDate day = start; !day.isAfter(end); day = day.plusDays(1)) {
         if (day.getDayOfWeek() == DayOfWeek.SATURDAY || day.getDayOfWeek() == DayOfWeek.SUNDAY) {

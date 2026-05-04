@@ -360,6 +360,17 @@ export default function TeamPage() {
   const [allowedBreaksMinutesInput, setAllowedBreaksMinutesInput] = useState<string>("");
   const [otherSettingsOpen, setOtherSettingsOpen] = useState(false);
   const otherSettingsRef = useRef<HTMLDivElement>(null);
+  const [showOverviewUncheckArrow, setShowOverviewUncheckArrow] = useState(false);
+
+  useEffect(() => {
+    if (!overviewMode) setShowOverviewUncheckArrow(false);
+  }, [overviewMode]);
+
+  useEffect(() => {
+    if (!showOverviewUncheckArrow) return;
+    const id = window.setTimeout(() => setShowOverviewUncheckArrow(false), 14_000);
+    return () => window.clearTimeout(id);
+  }, [showOverviewUncheckArrow]);
 
   useEffect(() => {
     if (!otherSettingsOpen) return;
@@ -718,6 +729,7 @@ export default function TeamPage() {
   function toastIfOverviewBlocksDeptTeam() {
     if (!overviewMode) return false;
     toast.info(t("attendance.uncheckOverviewForDeptTeamFilters"));
+    setShowOverviewUncheckArrow(true);
     return true;
   }
 
@@ -785,15 +797,38 @@ export default function TeamPage() {
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <label className="text-sm">
-          <input
-            type="checkbox"
-            className="mr-2 align-middle"
-            checked={overviewMode}
-            onChange={(e) => setOverviewMode(e.target.checked)}
-          />
-          {t("attendance.overview")}
-        </label>
+        <span className="relative inline-flex items-center">
+          {showOverviewUncheckArrow ? (
+            <span
+              className="attendance-overview-hint-arrow pointer-events-none absolute -top-[3.5rem] left-[5px] z-10 flex flex-col items-center sm:left-2"
+              aria-hidden
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={3}
+                stroke="currentColor"
+                className="h-9 w-9 text-emerald-700 dark:text-emerald-300"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 4.5v15m0 0l-6-6m6 6l6-6"
+                />
+              </svg>
+            </span>
+          ) : null}
+          <label className="text-sm">
+            <input
+              type="checkbox"
+              className="mr-2 align-middle"
+              checked={overviewMode}
+              onChange={(e) => setOverviewMode(e.target.checked)}
+            />
+            {t("attendance.overview")}
+          </label>
+        </span>
         <label className="text-sm">
           <input
             type="checkbox"

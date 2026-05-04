@@ -16,3 +16,89 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* Employees directory: full name cell — subtle tint + seamless L→R wave while schedule tooltip is open */
+@keyframes schedule-cell-wave-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.schedule-cell-wave-active {
+  position: relative;
+  overflow: hidden;
+  background-color: rgba(16, 185, 129, 0.14) !important;
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.28);
+}
+
+.schedule-cell-wave-active::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    rgba(16, 185, 129, 0) 0%,
+    rgba(16, 185, 129, 0) 38%,
+    rgba(255, 255, 255, 0.28) 48%,
+    rgba(16, 185, 129, 0.42) 50%,
+    rgba(255, 255, 255, 0.22) 52%,
+    rgba(16, 185, 129, 0) 63%,
+    rgba(16, 185, 129, 0) 100%
+  );
+  background-size: 220% 100%;
+  animation: schedule-cell-wave-shimmer 4.5s linear infinite;
+}
+
+.dark .schedule-cell-wave-active {
+  background-color: rgba(5, 150, 105, 0.22) !important;
+  box-shadow: inset 0 0 0 1px rgba(52, 211, 153, 0.35);
+}
+
+.dark .schedule-cell-wave-active::after {
+  background: linear-gradient(
+    100deg,
+    rgba(52, 211, 153, 0) 0%,
+    rgba(52, 211, 153, 0) 36%,
+    rgba(240, 253, 250, 0.22) 47%,
+    rgba(52, 211, 153, 0.45) 50%,
+    rgba(167, 243, 208, 0.32) 53%,
+    rgba(52, 211, 153, 0) 64%,
+    rgba(52, 211, 153, 0) 100%
+  );
+  background-size: 220% 100%;
+}
+
+/* Team attendance: arrow nudge toward Overview checkbox when dept/team filter is blocked */
+@keyframes attendance-overview-arrow-nudge {
+  0% {
+    transform: translateY(-36px);
+    opacity: 0.35;
+  }
+  45% {
+    opacity: 1;
+  }
+  72% {
+    transform: translateY(6px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-36px);
+    opacity: 0.35;
+  }
+}
+
+.attendance-overview-hint-arrow {
+  animation: attendance-overview-arrow-nudge 2.8s ease-in-out infinite;
+  filter: drop-shadow(0 1px 0 rgb(4 120 87 / 0.45))
+    drop-shadow(0 2px 4px rgb(0 0 0 / 0.12));
+}
+
+.dark .attendance-overview-hint-arrow {
+  filter: drop-shadow(0 1px 0 rgb(110 231 183 / 0.35))
+    drop-shadow(0 2px 4px rgb(0 0 0 / 0.25));
+}

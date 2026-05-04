@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { EmployeeModal, type EmployeeFormState } from "@/components/employees/EmployeeModal";
+import { EmployeeScheduleModal } from "@/components/employees/EmployeeScheduleModal";
 import { api } from "@/lib/api";
 import { extractApiMessage } from "@/lib/errors";
 import type { DepartmentDto, TeamDto, UserDto, UserRole } from "@/lib/types";
+import type { SchedulePopoverAnchor } from "@/components/employees/EmployeeScheduleModal";
 import { ModalScrim } from "@/components/ModalScrim";
 import { useAuthStore } from "@/store/authStore";
 
@@ -122,6 +124,10 @@ export default function EmployeesAdminPage() {
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [editing, setEditing] = useState<UserDto | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<UserDto | null>(null);
+  const [schedulePopover, setSchedulePopover] = useState<{
+    user: UserDto;
+    anchor: SchedulePopoverAnchor;
+  } | null>(null);
   const [managedKind, setManagedKind] = useState<"EMPLOYEE" | "TEAM_LEADER">("EMPLOYEE");
 
   const directory = useMemo(() => {
@@ -461,8 +467,59 @@ export default function EmployeesAdminPage() {
                           key={u.id}
                           className={`border-b border-zinc-100 transition dark:border-zinc-800 ${theme.rowTint} ${theme.rowHover}`}
                         >
-                          <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">
-                            {u.name}
+                          <td
+                            className={`max-w-[14rem] px-4 py-3 ${
+                              schedulePopover?.user.id === u.id ? "schedule-cell-wave-active" : ""
+                            }`}
+                          >
+                            <span
+                              className={`inline-flex min-w-0 items-center gap-1 ${
+                                schedulePopover?.user.id === u.id ? "relative z-[1]" : ""
+                              }`}
+                            >
+                              <span
+                                className="truncate font-medium text-zinc-900 dark:text-zinc-100"
+                                title={
+                                  schedulePopover?.user.id === u.id ? u.name : undefined
+                                }
+                              >
+                                {u.name}
+                              </span>
+                              <button
+                                type="button"
+                                data-schedule-trigger
+                                aria-label={`Weekly schedule for ${u.name}`}
+                                aria-haspopup="dialog"
+                                title="Weekly schedule"
+                                onClick={(e) => {
+                                  const r = e.currentTarget.getBoundingClientRect();
+                                  setSchedulePopover({
+                                    user: u,
+                                    anchor: {
+                                      top: r.top,
+                                      left: r.left,
+                                      width: r.width,
+                                      height: r.height,
+                                    },
+                                  });
+                                }}
+                                className="inline-flex shrink-0 rounded p-0.5 text-zinc-500 hover:bg-zinc-200/80 hover:text-zinc-800 dark:hover:bg-zinc-700 dark:hover:text-zinc-100"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                  className="h-3.5 w-3.5"
+                                  aria-hidden
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              </button>
+                            </span>
                           </td>
                           <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{u.email}</td>
                           <td className="px-4 py-3 font-mono text-xs text-zinc-500">
@@ -522,6 +579,15 @@ export default function EmployeesAdminPage() {
           </div>
         )}
       </div>
+
+      {schedulePopover && (
+        <EmployeeScheduleModal
+          key={schedulePopover.user.id}
+          user={schedulePopover.user}
+          anchor={schedulePopover.anchor}
+          onClose={() => setSchedulePopover(null)}
+        />
+      )}
 
       <EmployeeModal
         key={`${modalOpen}-${modalMode}-${editing?.id ?? "new"}-${teamOptions[0]?.id ?? ""}-${managedKind}`}

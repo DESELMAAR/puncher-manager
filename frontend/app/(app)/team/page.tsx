@@ -63,6 +63,8 @@ function teamAccentClass(teamId: string) {
   return palette[h % palette.length]!;
 }
 
+const ALL_TEAMS = "__ALL_TEAMS__";
+
 function punchBadgeClass(type: string) {
   switch (type) {
     case "WORK_START":
@@ -584,6 +586,7 @@ export default function TeamPage() {
   useEffect(() => {
     if (overviewMode) return;
     if (!selectedTeam) return;
+    if (selectedTeam === "__ALL_TEAMS__") return;
     void (async () => {
       const params = rangeMode ? { from, to } : { date };
       const { data } = await api.get<AttendanceRow[]>(
@@ -595,7 +598,7 @@ export default function TeamPage() {
   }, [overviewMode, selectedTeam, rangeMode, date, from, to]);
 
   useEffect(() => {
-    if (!overviewMode) return;
+    if (!overviewMode && selectedTeam !== "__ALL_TEAMS__") return;
     void (async () => {
       const params = rangeMode ? { from, to } : { date };
       const { data } = await api.get<AttendanceOverviewGroupDto[]>(
@@ -604,11 +607,12 @@ export default function TeamPage() {
       );
       setOverview(data);
     })();
-  }, [overviewMode, rangeMode, date, from, to]);
+  }, [overviewMode, selectedTeam, rangeMode, date, from, to]);
 
   function exportCsv() {
     if (overviewMode) return;
     if (!selectedTeam) return;
+    if (selectedTeam === ALL_TEAMS) return;
     const baseURL =
       process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8080";
     const tok = useAuthStore.getState().token;
@@ -648,9 +652,12 @@ export default function TeamPage() {
 
   async function exportExcel() {
     const deptId = selectedDeptId ?? departmentId ?? "";
+    const groupedForExport = deptAllTeamsMode ? deptFilteredGrouped : grouped;
     const filterUserIds = Array.from(
       new Set(
-        (overviewMode ? grouped.flatMap((g) => g.rows) : filteredRows).map((r) => r.userId),
+        (showGroupedView ? groupedForExport.flatMap((g) => g.rows) : filteredRows).map(
+          (r) => r.userId,
+        ),
       ),
     );
 
@@ -666,6 +673,7 @@ export default function TeamPage() {
     }
     if (exportScope === "TEAM") {
       if (!selectedTeam) return;
+      if (selectedTeam === ALL_TEAMS) return;
       body.teamId = selectedTeam;
     } else if (exportScope === "DEPARTMENT") {
       if (!deptId) return;
@@ -706,6 +714,20 @@ export default function TeamPage() {
       .map((g) => ({ ...g, rows: g.rows.filter(matches) }))
       .filter((g) => g.rows.length > 0);
   }, [overview, matches, q]);
+
+  const deptAllTeamsMode = !overviewMode && selectedTeam === ALL_TEAMS;
+  const showGroupedView = overviewMode || deptAllTeamsMode;
+  const deptFilteredGrouped = useMemo(() => {
+    if (!deptAllTeamsMode) return grouped;
+    const deptId = selectedDeptId ?? departmentId ?? null;
+    if (!deptId) return [];
+    return grouped.filter((g) => g.departmentId === deptId);
+  }, [deptAllTeamsMode, grouped, selectedDeptId, departmentId]);
+
+  useEffect(() => {
+    if (!deptAllTeamsMode) return;
+    setExportScope("DEPARTMENT");
+  }, [deptAllTeamsMode]);
 
   const deptFirstStartHour = useMemo(() => {
     // Prefer configured business hour if present (single-team view has a selected department).
@@ -777,6 +799,7 @@ export default function TeamPage() {
             }}
             className="ml-2 rounded border border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800"
           >
+            <option value={ALL_TEAMS}>All teams</option>
             {teams.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.name}
@@ -971,7 +994,7 @@ export default function TeamPage() {
         <button
           type="button"
           onClick={exportCsv}
-          disabled={overviewMode || !selectedTeam}
+          disabled={overviewMode || !selectedTeam || selectedTeam === ALL_TEAMS}
           className="rounded-lg border border-zinc-300 px-3 py-1 text-sm dark:border-zinc-600"
         >
           {t("action.exportCsv")}
@@ -992,7 +1015,7 @@ export default function TeamPage() {
           type="button"
           onClick={() => void exportExcel()}
           disabled={
-            (exportScope === "TEAM" && !selectedTeam) ||
+            (exportScope === "TEAM" && (!selectedTeam || selectedTeam === ALL_TEAMS)) ||
             (exportScope === "DEPARTMENT" && !(selectedDeptId ?? departmentId)) ||
             (exportScope === "ALL" && !canExportAllDepartments)
           }
@@ -1023,7 +1046,7 @@ export default function TeamPage() {
         )}
       </div>
 
-      {!overviewMode && (
+      {!showGroupedView && (
         <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-zinc-100 dark:bg-zinc-900">
@@ -1217,16 +1240,16 @@ export default function TeamPage() {
         </div>
       )}
 
-      {overviewMode && (
+      {showGroupedView && (
         <div className="space-y-3">
-          {grouped.map((g) => (
+          {(deptAllTeamsMode ? deptFilteredGrouped : grouped).map((g) => (
             <div
               key={g.teamId}
               className={`overflow-x-auto rounded-lg border ${teamAccentClass(g.teamId)}`}
             >
               <div className="flex flex-wrap items-baseline justify-between gap-2 bg-white/40 px-3 py-2 dark:bg-black/10">
                 <div className="font-medium">
-                  {g.departmentName} / {g.teamName}
+                  {deptAllTeamsMode ? g.teamName : `${g.departmentName} / ${g.teamName}`}
                 </div>
                 <div className="text-xs text-zinc-500">
                   {g.rows.length} employee{g.rows.length === 1 ? "" : "s"}
@@ -1416,8 +1439,8 @@ export default function TeamPage() {
               </table>
             </div>
           ))}
-          {grouped.length === 0 && (
-            <p className="text-sm text-zinc-500">No teams available for your scope.</p>
+          {(deptAllTeamsMode ? deptFilteredGrouped : grouped).length === 0 && (
+            <p className="text-sm text-zinc-500">{t("attendance.noMatches")}</p>
           )}
         </div>
       )}

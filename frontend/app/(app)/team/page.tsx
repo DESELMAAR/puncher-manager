@@ -336,6 +336,8 @@ export default function TeamPage() {
   const { teamId, departmentId, role } = useAuthStore();
   const showScheduleVsPlan = canSeeScheduleVsPlan(role);
 
+  const ATTENDANCE_FILTERS_KEY = "attendance.teamPage.filters.v1";
+
   const [openRow, setOpenRow] = useState<string | null>(null);
   const [expandAll, setExpandAll] = useState(false);
   const [openPunchTimes, setOpenPunchTimes] = useState<Set<string>>(() => new Set());
@@ -357,12 +359,94 @@ export default function TeamPage() {
   const [rows, setRows] = useState<AttendanceRow[]>([]);
   const [overviewMode, setOverviewMode] = useState(true);
   const [overview, setOverview] = useState<AttendanceOverviewGroupDto[]>([]);
+  const [exportScope, setExportScope] = useState<"ALL" | "DEPARTMENT" | "TEAM">("TEAM");
   const [lateGraceMinutesInput, setLateGraceMinutesInput] = useState<string>("");
   const [allowedLunchMinutesInput, setAllowedLunchMinutesInput] = useState<string>("");
   const [allowedBreaksMinutesInput, setAllowedBreaksMinutesInput] = useState<string>("");
   const [otherSettingsOpen, setOtherSettingsOpen] = useState(false);
   const otherSettingsRef = useRef<HTMLDivElement>(null);
   const [showOverviewUncheckArrow, setShowOverviewUncheckArrow] = useState(false);
+  const [filtersRestored, setFiltersRestored] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.sessionStorage.getItem(ATTENDANCE_FILTERS_KEY);
+      if (!raw) {
+        setFiltersRestored(true);
+        return;
+      }
+      const v = JSON.parse(raw) as Partial<{
+        overviewMode: boolean;
+        rangeMode: boolean;
+        date: string;
+        from: string;
+        to: string;
+        query: string;
+        selectedDeptId: string | null;
+        selectedTeam: string | null;
+        exportScope: "ALL" | "DEPARTMENT" | "TEAM";
+      }>;
+
+      if (typeof v.overviewMode === "boolean") setOverviewMode(v.overviewMode);
+      if (typeof v.rangeMode === "boolean") setRangeMode(v.rangeMode);
+      if (typeof v.date === "string" && v.date) setDate(v.date);
+      if (typeof v.from === "string" && v.from) setFrom(v.from);
+      if (typeof v.to === "string" && v.to) setTo(v.to);
+      if (typeof v.query === "string") setQuery(v.query);
+      if (typeof v.exportScope === "string") setExportScope(v.exportScope);
+
+      // Only restore dept/team selections for roles that can change them.
+      if (role === "SUPER_ADMIN" || role === "ADMIN") {
+        if (typeof v.selectedDeptId === "string" || v.selectedDeptId === null) {
+          setSelectedDeptId(v.selectedDeptId ?? null);
+        }
+        if (typeof v.selectedTeam === "string" || v.selectedTeam === null) {
+          setSelectedTeam(v.selectedTeam ?? null);
+        }
+      } else if (role === "DEPT_MANAGER") {
+        if (typeof v.selectedTeam === "string" || v.selectedTeam === null) {
+          setSelectedTeam(v.selectedTeam ?? null);
+        }
+      }
+    } catch {
+      // ignore malformed storage
+    } finally {
+      setFiltersRestored(true);
+    }
+  }, [role]);
+
+  useEffect(() => {
+    if (!filtersRestored) return;
+    if (typeof window === "undefined") return;
+    const payload = {
+      overviewMode,
+      rangeMode,
+      date,
+      from,
+      to,
+      query,
+      selectedDeptId,
+      selectedTeam,
+      exportScope,
+    };
+    try {
+      window.sessionStorage.setItem(ATTENDANCE_FILTERS_KEY, JSON.stringify(payload));
+    } catch {
+      // ignore quota / privacy mode
+    }
+  }, [
+    filtersRestored,
+    overviewMode,
+    rangeMode,
+    date,
+    from,
+    to,
+    query,
+    selectedDeptId,
+    selectedTeam,
+    exportScope,
+  ]);
 
   useEffect(() => {
     if (!overviewMode) setShowOverviewUncheckArrow(false);
@@ -632,10 +716,16 @@ export default function TeamPage() {
   }
 
   const canExportAllDepartments = role === "SUPER_ADMIN" || role === "ADMIN";
-  const canExportDepartment = role === "SUPER_ADMIN" || role === "ADMIN" || role === "DEPT_MANAGER" || role === "TEAM_LEADER";
-  const canExportTeam = role === "SUPER_ADMIN" || role === "ADMIN" || role === "DEPT_MANAGER" || role === "TEAM_LEADER";
-
-  const [exportScope, setExportScope] = useState<"ALL" | "DEPARTMENT" | "TEAM">("TEAM");
+  const canExportDepartment =
+    role === "SUPER_ADMIN" ||
+    role === "ADMIN" ||
+    role === "DEPT_MANAGER" ||
+    role === "TEAM_LEADER";
+  const canExportTeam =
+    role === "SUPER_ADMIN" ||
+    role === "ADMIN" ||
+    role === "DEPT_MANAGER" ||
+    role === "TEAM_LEADER";
 
   function downloadBlob(blob: Blob, fallbackName: string, contentDisposition?: string | null) {
     let name = fallbackName;

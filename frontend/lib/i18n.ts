@@ -46,6 +46,7 @@ export type I18nKey =
   | "attendance.noTeams"
   | "attendance.noMatches"
   | "attendance.otherSettings"
+  | "attendance.allDepartments"
   | "attendance.uncheckOverviewForDeptTeamFilters"
   | "table.date"
   | "table.employee"
@@ -102,6 +103,7 @@ const dict: Record<Language, Record<I18nKey, string>> = {
     "attendance.noTeams": "No teams available for your scope.",
     "attendance.noMatches": "No matching employees.",
     "attendance.otherSettings": "Other settings",
+    "attendance.allDepartments": "All departments",
     "attendance.uncheckOverviewForDeptTeamFilters":
       "Uncheck “Overview (all teams)” to choose a department or team.",
     "table.date": "Date",
@@ -158,6 +160,7 @@ const dict: Record<Language, Record<I18nKey, string>> = {
     "attendance.noTeams": "Aucune équipe disponible dans votre périmètre.",
     "attendance.noMatches": "Aucun employé correspondant.",
     "attendance.otherSettings": "Autres paramètres",
+    "attendance.allDepartments": "Tous les départements",
     "attendance.uncheckOverviewForDeptTeamFilters":
       "Décochez « Vue d’ensemble (toutes les équipes) » pour choisir un département ou une équipe.",
     "table.date": "Date",
@@ -214,6 +217,7 @@ const dict: Record<Language, Record<I18nKey, string>> = {
     "attendance.noTeams": "No hay equipos disponibles en tu alcance.",
     "attendance.noMatches": "No hay empleados coincidentes.",
     "attendance.otherSettings": "Otros ajustes",
+    "attendance.allDepartments": "Todos los departamentos",
     "attendance.uncheckOverviewForDeptTeamFilters":
       "Desmarca « Resumen (todos los equipos) » para elegir departamento o equipo.",
     "table.date": "Fecha",

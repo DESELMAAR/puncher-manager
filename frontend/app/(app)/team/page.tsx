@@ -64,6 +64,7 @@ function teamAccentClass(teamId: string) {
 }
 
 const ALL_TEAMS = "__ALL_TEAMS__";
+const ALL_DEPARTMENTS = "__ALL_DEPARTMENTS__";
 
 function punchBadgeClass(type: string) {
   switch (type) {
@@ -359,7 +360,6 @@ export default function TeamPage() {
   const [rows, setRows] = useState<AttendanceRow[]>([]);
   const [overviewMode, setOverviewMode] = useState(true);
   const [overview, setOverview] = useState<AttendanceOverviewGroupDto[]>([]);
-  const [exportScope, setExportScope] = useState<"ALL" | "DEPARTMENT" | "TEAM">("TEAM");
   const [lateGraceMinutesInput, setLateGraceMinutesInput] = useState<string>("");
   const [allowedLunchMinutesInput, setAllowedLunchMinutesInput] = useState<string>("");
   const [allowedBreaksMinutesInput, setAllowedBreaksMinutesInput] = useState<string>("");
@@ -385,7 +385,6 @@ export default function TeamPage() {
         query: string;
         selectedDeptId: string | null;
         selectedTeam: string | null;
-        exportScope: "ALL" | "DEPARTMENT" | "TEAM";
       }>;
 
       if (typeof v.overviewMode === "boolean") setOverviewMode(v.overviewMode);
@@ -394,11 +393,12 @@ export default function TeamPage() {
       if (typeof v.from === "string" && v.from) setFrom(v.from);
       if (typeof v.to === "string" && v.to) setTo(v.to);
       if (typeof v.query === "string") setQuery(v.query);
-      if (typeof v.exportScope === "string") setExportScope(v.exportScope);
 
       // Only restore dept/team selections for roles that can change them.
       if (role === "SUPER_ADMIN" || role === "ADMIN") {
-        if (typeof v.selectedDeptId === "string" || v.selectedDeptId === null) {
+        if (v.selectedDeptId === ALL_DEPARTMENTS) {
+          setSelectedDeptId(ALL_DEPARTMENTS);
+        } else if (typeof v.selectedDeptId === "string" || v.selectedDeptId === null) {
           setSelectedDeptId(v.selectedDeptId ?? null);
         }
         if (typeof v.selectedTeam === "string" || v.selectedTeam === null) {
@@ -428,7 +428,6 @@ export default function TeamPage() {
       query,
       selectedDeptId,
       selectedTeam,
-      exportScope,
     };
     try {
       window.sessionStorage.setItem(ATTENDANCE_FILTERS_KEY, JSON.stringify(payload));
@@ -445,7 +444,6 @@ export default function TeamPage() {
     query,
     selectedDeptId,
     selectedTeam,
-    exportScope,
   ]);
 
   useEffect(() => {
@@ -543,22 +541,30 @@ export default function TeamPage() {
             depts[0]?.id ??
             null;
           const desiredDept =
-            (selectedDeptId && depts.some((d) => d.id === selectedDeptId) ? selectedDeptId : null) ??
-            initial;
+            selectedDeptId === ALL_DEPARTMENTS
+              ? ALL_DEPARTMENTS
+              : (selectedDeptId && depts.some((d) => d.id === selectedDeptId) ? selectedDeptId : null) ??
+                initial;
           setSelectedDeptId(desiredDept);
-          const deptForGrace = depts.find((d) => d.id === desiredDept);
-          setLateGraceMinutesInput(
-            deptForGrace?.lateGraceMinutes != null ? String(deptForGrace.lateGraceMinutes) : "",
-          );
-          setAllowedLunchMinutesInput(
-            deptForGrace?.allowedLunchMinutes != null ? String(deptForGrace.allowedLunchMinutes) : "",
-          );
-          setAllowedBreaksMinutesInput(
-            deptForGrace?.allowedBreaksMinutes != null
-              ? String(deptForGrace.allowedBreaksMinutes)
-              : "",
-          );
-          if (desiredDept) {
+          if (desiredDept === ALL_DEPARTMENTS) {
+            setTeams([]);
+            setSelectedTeam(null);
+            setLateGraceMinutesInput("");
+            setAllowedLunchMinutesInput("");
+            setAllowedBreaksMinutesInput("");
+          } else if (desiredDept) {
+            const deptForGrace = depts.find((d) => d.id === desiredDept);
+            setLateGraceMinutesInput(
+              deptForGrace?.lateGraceMinutes != null ? String(deptForGrace.lateGraceMinutes) : "",
+            );
+            setAllowedLunchMinutesInput(
+              deptForGrace?.allowedLunchMinutes != null ? String(deptForGrace.allowedLunchMinutes) : "",
+            );
+            setAllowedBreaksMinutesInput(
+              deptForGrace?.allowedBreaksMinutes != null
+                ? String(deptForGrace.allowedBreaksMinutes)
+                : "",
+            );
             const { data: teamList } = await api.get<TeamDto[]>(
               `/api/teams/department/${desiredDept}`,
             );
@@ -610,6 +616,19 @@ export default function TeamPage() {
       setTeams([]);
       setSelectedTeam(null);
     }
+  }
+
+  function onDepartmentFilterChange(value: string) {
+    if (value === ALL_DEPARTMENTS) {
+      setSelectedDeptId(ALL_DEPARTMENTS);
+      setTeams([]);
+      setSelectedTeam(null);
+      setLateGraceMinutesInput("");
+      setAllowedLunchMinutesInput("");
+      setAllowedBreaksMinutesInput("");
+      return;
+    }
+    void onDepartmentChange(value);
   }
 
   const canEditLateGrace =
@@ -683,6 +702,7 @@ export default function TeamPage() {
 
   useEffect(() => {
     if (overviewMode) return;
+    if (selectedDeptId === ALL_DEPARTMENTS) return;
     if (!selectedTeam) return;
     if (selectedTeam === "__ALL_TEAMS__") return;
     void (async () => {
@@ -693,10 +713,14 @@ export default function TeamPage() {
       );
       setRows(data);
     })();
-  }, [overviewMode, selectedTeam, rangeMode, date, from, to]);
+  }, [overviewMode, selectedDeptId, selectedTeam, rangeMode, date, from, to]);
 
   useEffect(() => {
-    if (!overviewMode && selectedTeam !== "__ALL_TEAMS__") return;
+    const needOverview =
+      overviewMode ||
+      selectedTeam === ALL_TEAMS ||
+      selectedDeptId === ALL_DEPARTMENTS;
+    if (!needOverview) return;
     void (async () => {
       const params = rangeMode ? { from, to } : { date };
       const { data } = await api.get<AttendanceOverviewGroupDto[]>(
@@ -705,7 +729,7 @@ export default function TeamPage() {
       );
       setOverview(data);
     })();
-  }, [overviewMode, selectedTeam, rangeMode, date, from, to]);
+  }, [overviewMode, selectedTeam, selectedDeptId, rangeMode, date, from, to]);
 
   function exportCsv() {
     if (overviewMode) return;
@@ -730,16 +754,6 @@ export default function TeamPage() {
   }
 
   const canExportAllDepartments = role === "SUPER_ADMIN" || role === "ADMIN";
-  const canExportDepartment =
-    role === "SUPER_ADMIN" ||
-    role === "ADMIN" ||
-    role === "DEPT_MANAGER" ||
-    role === "TEAM_LEADER";
-  const canExportTeam =
-    role === "SUPER_ADMIN" ||
-    role === "ADMIN" ||
-    role === "DEPT_MANAGER" ||
-    role === "TEAM_LEADER";
 
   function downloadBlob(blob: Blob, fallbackName: string, contentDisposition?: string | null) {
     let name = fallbackName;
@@ -752,46 +766,6 @@ export default function TeamPage() {
     a.download = name;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 30_000);
-  }
-
-  async function exportExcel() {
-    const deptId = selectedDeptId ?? departmentId ?? "";
-    const groupedForExport = deptAllTeamsMode ? deptFilteredGrouped : grouped;
-    const filterUserIds = Array.from(
-      new Set(
-        (showGroupedView ? groupedForExport.flatMap((g) => g.rows) : filteredRows).map(
-          (r) => r.userId,
-        ),
-      ),
-    );
-
-    const body: Record<string, unknown> = {
-      scope: exportScope,
-      filterUserIds,
-    };
-    if (rangeMode) {
-      body.from = from;
-      body.to = to;
-    } else {
-      body.date = date;
-    }
-    if (exportScope === "TEAM") {
-      if (!selectedTeam) return;
-      if (selectedTeam === ALL_TEAMS) return;
-      body.teamId = selectedTeam;
-    } else if (exportScope === "DEPARTMENT") {
-      if (!deptId) return;
-      body.departmentId = deptId;
-    }
-
-    const res = await api.post<Blob>("/api/attendance/export.xlsx", body, {
-      responseType: "blob",
-    });
-    downloadBlob(
-      res.data,
-      `attendance-${exportScope.toLowerCase()}-${rangeMode ? `${from}-to-${to}` : date}.xlsx`,
-      (res.headers as Record<string, string | undefined>)["content-disposition"] ?? null,
-    );
   }
 
   const showDepartmentPicker =
@@ -819,24 +793,90 @@ export default function TeamPage() {
       .filter((g) => g.rows.length > 0);
   }, [overview, matches, q]);
 
-  const deptAllTeamsMode = !overviewMode && selectedTeam === ALL_TEAMS;
-  const showGroupedView = overviewMode || deptAllTeamsMode;
+  const allDepartmentsMode = !overviewMode && selectedDeptId === ALL_DEPARTMENTS;
+  const deptAllTeamsMode =
+    !overviewMode &&
+    selectedTeam === ALL_TEAMS &&
+    Boolean(selectedDeptId) &&
+    selectedDeptId !== ALL_DEPARTMENTS;
+  const showGroupedView = overviewMode || deptAllTeamsMode || allDepartmentsMode;
   const deptFilteredGrouped = useMemo(() => {
+    if (allDepartmentsMode) return grouped;
     if (!deptAllTeamsMode) return grouped;
     const deptId = selectedDeptId ?? departmentId ?? null;
     if (!deptId) return [];
     return grouped.filter((g) => g.departmentId === deptId);
-  }, [deptAllTeamsMode, grouped, selectedDeptId, departmentId]);
+  }, [allDepartmentsMode, deptAllTeamsMode, grouped, selectedDeptId, departmentId]);
 
-  useEffect(() => {
-    if (!deptAllTeamsMode) return;
-    setExportScope("DEPARTMENT");
-  }, [deptAllTeamsMode]);
+  async function exportExcel() {
+    const scope: "ALL" | "DEPARTMENT" | "TEAM" =
+      overviewMode || selectedDeptId === ALL_DEPARTMENTS
+        ? "ALL"
+        : selectedTeam === ALL_TEAMS
+          ? "DEPARTMENT"
+          : "TEAM";
+    const deptId = selectedDeptId ?? departmentId ?? "";
+    const groupedForExport = allDepartmentsMode
+      ? grouped
+      : deptAllTeamsMode
+        ? deptFilteredGrouped
+        : grouped;
+    const filterUserIds = Array.from(
+      new Set(
+        (showGroupedView ? groupedForExport.flatMap((g) => g.rows) : filteredRows).map(
+          (r) => r.userId,
+        ),
+      ),
+    );
+
+    const body: Record<string, unknown> = {
+      scope,
+      filterUserIds,
+    };
+    if (rangeMode) {
+      body.from = from;
+      body.to = to;
+    } else {
+      body.date = date;
+    }
+    if (scope === "TEAM") {
+      if (!selectedTeam) return;
+      if (selectedTeam === ALL_TEAMS) return;
+      body.teamId = selectedTeam;
+    } else if (scope === "DEPARTMENT") {
+      if (!deptId || deptId === ALL_DEPARTMENTS) return;
+      body.departmentId = deptId;
+    }
+
+    const res = await api.post<Blob>("/api/attendance/export.xlsx", body, {
+      responseType: "blob",
+    });
+    downloadBlob(
+      res.data,
+      `attendance-${scope.toLowerCase()}-${rangeMode ? `${from}-to-${to}` : date}.xlsx`,
+      (res.headers as Record<string, string | undefined>)["content-disposition"] ?? null,
+    );
+  }
+
+  const attendanceExcelExportDisabled = (() => {
+    const scope: "ALL" | "DEPARTMENT" | "TEAM" =
+      overviewMode || selectedDeptId === ALL_DEPARTMENTS
+        ? "ALL"
+        : selectedTeam === ALL_TEAMS
+          ? "DEPARTMENT"
+          : "TEAM";
+    if (scope === "ALL") return !canExportAllDepartments;
+    if (scope === "DEPARTMENT") {
+      const id = selectedDeptId ?? departmentId ?? "";
+      return !id || id === ALL_DEPARTMENTS;
+    }
+    return !selectedTeam || selectedTeam === ALL_TEAMS;
+  })();
 
   const deptFirstStartHour = useMemo(() => {
     // Prefer configured business hour if present (single-team view has a selected department).
     const deptId = selectedDeptId ?? departmentId ?? null;
-    if (!deptId) return null;
+    if (!deptId || deptId === ALL_DEPARTMENTS) return null;
     const d = departments.find((x) => x.id === deptId);
     const h = d?.businessFirstStartHour;
     return typeof h === "number" ? clampHour(h) : null;
@@ -876,13 +916,14 @@ export default function TeamPage() {
         <label className="text-sm">
           {t("label.department")}{" "}
           <select
-            value={selectedDeptId ?? ""}
+            value={selectedDeptId === ALL_DEPARTMENTS ? ALL_DEPARTMENTS : (selectedDeptId ?? "")}
             onChange={(e) => {
               if (toastIfOverviewBlocksDeptTeam()) return;
-              void onDepartmentChange(e.target.value);
+              onDepartmentFilterChange(e.target.value);
             }}
             className="ml-2 min-w-[12rem] rounded border border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800"
           >
+            <option value={ALL_DEPARTMENTS}>{t("attendance.allDepartments")}</option>
             {departments.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name}
@@ -892,7 +933,7 @@ export default function TeamPage() {
         </label>
       )}
 
-      {teams.length > 1 && (
+      {teams.length > 1 && selectedDeptId && selectedDeptId !== ALL_DEPARTMENTS && (
         <label className="text-sm">
           {t("label.team")}{" "}
           <select
@@ -913,13 +954,13 @@ export default function TeamPage() {
         </label>
       )}
 
-      {teams.length === 1 && role !== "TEAM_LEADER" && (
+      {teams.length === 1 && role !== "TEAM_LEADER" && selectedDeptId && selectedDeptId !== ALL_DEPARTMENTS && (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {t("label.team")}: <span className="font-medium">{teams[0]?.name}</span>
         </p>
       )}
 
-      {teams.length === 0 && (
+      {teams.length === 0 && selectedDeptId !== ALL_DEPARTMENTS && (
         <p className="text-sm text-zinc-500">{t("attendance.noTeams")}</p>
       )}
 
@@ -995,7 +1036,9 @@ export default function TeamPage() {
             </>
           )}
         </label>
-        {canEditLateGrace && (selectedDeptId ?? departmentId) && (
+        {canEditLateGrace &&
+          (selectedDeptId ?? departmentId) &&
+          selectedDeptId !== ALL_DEPARTMENTS && (
           <div ref={otherSettingsRef} className="relative">
             <button
               type="button"
@@ -1103,26 +1146,10 @@ export default function TeamPage() {
         >
           {t("action.exportCsv")}
         </button>
-        <label className="text-sm">
-          <span className="mr-2">Export</span>
-          <select
-            value={exportScope}
-            onChange={(e) => setExportScope(e.target.value as "ALL" | "DEPARTMENT" | "TEAM")}
-            className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600 dark:bg-zinc-800"
-          >
-            {canExportTeam && <option value="TEAM">Team</option>}
-            {canExportDepartment && <option value="DEPARTMENT">Department</option>}
-            {canExportAllDepartments && <option value="ALL">All departments</option>}
-          </select>
-        </label>
         <button
           type="button"
           onClick={() => void exportExcel()}
-          disabled={
-            (exportScope === "TEAM" && (!selectedTeam || selectedTeam === ALL_TEAMS)) ||
-            (exportScope === "DEPARTMENT" && !(selectedDeptId ?? departmentId)) ||
-            (exportScope === "ALL" && !canExportAllDepartments)
-          }
+          disabled={attendanceExcelExportDisabled}
           className="rounded-lg border border-zinc-300 px-3 py-1 text-sm dark:border-zinc-600"
         >
           {t("action.exportExcel")}
@@ -1346,7 +1373,7 @@ export default function TeamPage() {
 
       {showGroupedView && (
         <div className="space-y-3">
-          {(deptAllTeamsMode ? deptFilteredGrouped : grouped).map((g) => (
+          {deptFilteredGrouped.map((g) => (
             <div
               key={g.teamId}
               className={`overflow-x-auto rounded-lg border ${teamAccentClass(g.teamId)}`}
@@ -1543,7 +1570,7 @@ export default function TeamPage() {
               </table>
             </div>
           ))}
-          {(deptAllTeamsMode ? deptFilteredGrouped : grouped).length === 0 && (
+          {deptFilteredGrouped.length === 0 && (
             <p className="text-sm text-zinc-500">{t("attendance.noMatches")}</p>
           )}
         </div>

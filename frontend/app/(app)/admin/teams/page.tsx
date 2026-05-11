@@ -11,6 +11,9 @@ import { useAuthStore } from "@/store/authStore";
 export default function TeamsAdminPage() {
   const viewerRole = useAuthStore((s) => s.role);
   const authDeptId = useAuthStore((s) => s.departmentId);
+  const authName = useAuthStore((s) => s.name);
+  const authEmail = useAuthStore((s) => s.email);
+  const authEmployeeId = useAuthStore((s) => s.employeeId);
   const allowed =
     viewerRole === "SUPER_ADMIN" ||
     viewerRole === "ADMIN" ||
@@ -33,6 +36,11 @@ export default function TeamsAdminPage() {
 
   const effectiveDeptId =
     viewerRole === "DEPT_MANAGER" && authDeptId ? authDeptId : selectedDeptId;
+
+  const effectiveDeptName = useMemo(() => {
+    if (!effectiveDeptId) return null;
+    return departments.find((d) => d.id === effectiveDeptId)?.name ?? null;
+  }, [departments, effectiveDeptId]);
 
   const loadMeta = useCallback(async () => {
     setLoading(true);
@@ -187,6 +195,19 @@ export default function TeamsAdminPage() {
             team first, then pick them here). Department managers create teams in their department;
             Super Admin and Admin can manage any department.
           </p>
+          {viewerRole === "DEPT_MANAGER" && (
+            <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 text-sm text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/25 dark:text-emerald-50">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="font-semibold">Department manager</div>
+                <div className="text-xs opacity-80">{effectiveDeptName ?? "—"}</div>
+              </div>
+              <div className="mt-2 text-xs text-emerald-900/90 dark:text-emerald-100/90">
+                <span className="font-medium">{authName ?? "—"}</span>
+                {authEmployeeId ? <span className="font-mono"> · {authEmployeeId}</span> : null}
+                {authEmail ? <span className="font-mono"> · {authEmail}</span> : null}
+              </div>
+            </div>
+          )}
         </div>
         <button
           type="button"

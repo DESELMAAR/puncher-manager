@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import { localDateISO } from "@/lib/dateUtils";
 
 export default function DashboardPage() {
-  const { name, role, employeeId, teamId, departmentId } = useAuthStore();
+  const { name, email, role, employeeId, teamId, departmentId } = useAuthStore();
   const [punches, setPunches] = useState<PunchDto[]>([]);
   const [deptName, setDeptName] = useState<string | null>(null);
   const [teamName, setTeamName] = useState<string | null>(null);
@@ -68,13 +68,13 @@ export default function DashboardPage() {
   }, [checkScheduleNotifications]);
 
   useEffect(() => {
-    if (role !== "EMPLOYEE") return;
+    if (role !== "EMPLOYEE" && role !== "DEPT_MANAGER") return;
     void (async () => {
       try {
         const { data: deps } = await api.get<DepartmentDto[]>("/api/departments");
         const dept = departmentId ? deps.find((d) => d.id === departmentId) : null;
         setDeptName(dept?.name ?? null);
-        if (teamId) {
+        if (role === "EMPLOYEE" && teamId) {
           const { data: t } = await api.get<TeamDto>("/api/teams/my");
           setTeamName(t?.name ?? null);
         } else {
@@ -93,6 +93,19 @@ export default function DashboardPage() {
       <p className="text-zinc-600 dark:text-zinc-400">
         Welcome, {name}. You are signed in as <strong>{role}</strong>.
       </p>
+      {role === "DEPT_MANAGER" && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 text-sm text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/25 dark:text-emerald-50">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="font-semibold">Department manager</div>
+            <div className="text-xs opacity-80">{deptName ?? "—"}</div>
+          </div>
+          <div className="mt-2 text-xs text-emerald-900/90 dark:text-emerald-100/90">
+            <span className="font-medium">{name ?? "—"}</span>
+            {employeeId ? <span className="font-mono"> · {employeeId}</span> : null}
+            {email ? <span className="font-mono"> · {email}</span> : null}
+          </div>
+        </div>
+      )}
       {role === "EMPLOYEE" && <ActiveStatusTimer punches={punches} />}
       {scheduleModalOpen && scheduleNotification && schedulePayload && (
         <ScheduleConfirmModal

@@ -19,6 +19,20 @@ spring:
   jackson:
     serialization:
       write-dates-as-timestamps: false
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:elmaarpro@gmail.com}
+    password: ${MAIL_PASSWORD:rosl trls bcms cwwc}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
 server:
   port: ${SERVER_PORT:8080}
@@ -29,6 +43,11 @@ app:
     expiration-ms: ${JWT_EXPIRATION_MS:28800000}
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:3000}
+  # Used in emails (weekly schedule links). Browser URL of the Next.js app.
+  public-url: ${APP_PUBLIC_URL:http://localhost:3000}
+  # Optional override when spring.mail.username should not be the From address
+  mail:
+    from: ${MAIL_FROM:}
 
 springdoc:
   api-docs:

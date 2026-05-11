@@ -6,6 +6,10 @@ import com.punchermanager.service.AttendanceExportService;
 import com.punchermanager.service.AttendanceExportService.Scope;
 import com.punchermanager.service.PunchService;
 import com.punchermanager.service.UserContextService;
+import com.punchermanager.web.dto.AttendanceAbsentEmployeeDto;
+import com.punchermanager.web.dto.AttendanceAnalyticsResponseDto;
+import com.punchermanager.web.dto.AttendanceLateDayDto;
+import com.punchermanager.web.dto.AttendanceLateEmployeeDto;
 import com.punchermanager.web.dto.AttendanceOverviewGroupDto;
 import com.punchermanager.web.dto.AttendanceExportRequest;
 import com.punchermanager.web.dto.AttendanceRowDto;
@@ -88,6 +92,62 @@ public class AttendanceController {
           org.springframework.http.HttpStatus.BAD_REQUEST, "date is required");
     }
     return attendanceService.overview(date, user, zone);
+  }
+
+  @GetMapping("/analytics")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','DEPT_MANAGER','TEAM_LEADER')")
+  public AttendanceAnalyticsResponseDto analytics(
+      HttpServletRequest http,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+      @RequestParam(required = false) UUID employeeUserId,
+      @RequestParam(required = false) UUID departmentId,
+      @RequestParam(required = false) UUID teamId) {
+    User user = userContextService.requireCurrentUser(http);
+    ZoneId zone = PunchService.resolveClientZone(http.getHeader("X-Client-Timezone"));
+    return attendanceService.analytics(from, to, employeeUserId, departmentId, teamId, user, zone);
+  }
+
+  @GetMapping("/analytics/late-employees")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','DEPT_MANAGER','TEAM_LEADER')")
+  public List<AttendanceLateEmployeeDto> analyticsLateEmployees(
+      HttpServletRequest http,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+      @RequestParam(required = false) UUID employeeUserId,
+      @RequestParam(required = false) UUID departmentId,
+      @RequestParam(required = false) UUID teamId) {
+    User user = userContextService.requireCurrentUser(http);
+    ZoneId zone = PunchService.resolveClientZone(http.getHeader("X-Client-Timezone"));
+    return attendanceService.analyticsLateEmployees(
+        from, to, employeeUserId, departmentId, teamId, user, zone);
+  }
+
+  @GetMapping("/analytics/late-employee-days")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','DEPT_MANAGER','TEAM_LEADER')")
+  public List<AttendanceLateDayDto> analyticsLateEmployeeDays(
+      HttpServletRequest http,
+      @RequestParam UUID userId,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+    User user = userContextService.requireCurrentUser(http);
+    ZoneId zone = PunchService.resolveClientZone(http.getHeader("X-Client-Timezone"));
+    return attendanceService.analyticsLateDaysForEmployee(from, to, userId, user, zone);
+  }
+
+  @GetMapping("/analytics/absent-employees")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','DEPT_MANAGER','TEAM_LEADER')")
+  public List<AttendanceAbsentEmployeeDto> analyticsAbsentEmployees(
+      HttpServletRequest http,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+      @RequestParam(required = false) UUID employeeUserId,
+      @RequestParam(required = false) UUID departmentId,
+      @RequestParam(required = false) UUID teamId) {
+    User user = userContextService.requireCurrentUser(http);
+    ZoneId zone = PunchService.resolveClientZone(http.getHeader("X-Client-Timezone"));
+    return attendanceService.analyticsAbsentEmployees(
+        from, to, employeeUserId, departmentId, teamId, user, zone);
   }
 
   @GetMapping(value = "/team/{teamId}/export", produces = "text/csv")

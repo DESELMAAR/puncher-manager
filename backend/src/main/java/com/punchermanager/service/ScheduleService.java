@@ -33,16 +33,19 @@ public class ScheduleService {
   private final ScheduleConfirmationRepository scheduleConfirmationRepository;
   private final UserRepository userRepository;
   private final NotificationService notificationService;
+  private final MailService mailService;
 
   public ScheduleService(
       WeeklyScheduleRepository weeklyScheduleRepository,
       ScheduleConfirmationRepository scheduleConfirmationRepository,
       UserRepository userRepository,
-      NotificationService notificationService) {
+      NotificationService notificationService,
+      MailService mailService) {
     this.weeklyScheduleRepository = weeklyScheduleRepository;
     this.scheduleConfirmationRepository = scheduleConfirmationRepository;
     this.userRepository = userRepository;
     this.notificationService = notificationService;
+    this.mailService = mailService;
   }
 
   public static LocalDate normalizeWeekStart(LocalDate anyDay) {
@@ -125,7 +128,10 @@ public class ScheduleService {
       conf.setRespondedAt(null);
       conf = scheduleConfirmationRepository.save(conf);
     }
-    return toResponse(saved, conf);
+    WeeklyScheduleResponse response = toResponse(saved, conf);
+    mailService.sendScheduleEmail(actor, employee, response, false);
+    notificationService.sendScheduleConfirm(actor, employee, response);
+    return response;
   }
 
   @Transactional
@@ -150,8 +156,10 @@ public class ScheduleService {
     conf.setComment(null);
     conf.setRespondedAt(null);
     conf = scheduleConfirmationRepository.save(conf);
-    notificationService.sendScheduleConfirm(actor, employee, toResponse(schedule, conf));
-    return toResponse(schedule, conf);
+    WeeklyScheduleResponse response = toResponse(schedule, conf);
+    notificationService.sendScheduleConfirm(actor, employee, response);
+    mailService.sendScheduleEmail(actor, employee, response, true);
+    return response;
   }
 
   @Transactional

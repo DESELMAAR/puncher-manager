@@ -335,7 +335,7 @@ function fmtMinutes(totalMin: number | null): string {
 
 export default function TeamPage() {
   const t = useT();
-  const { teamId, departmentId, role } = useAuthStore();
+  const { teamId, departmentId, role, name, email, employeeId } = useAuthStore();
   const showScheduleVsPlan = canSeeScheduleVsPlan(role);
 
   const ATTENDANCE_FILTERS_KEY = "attendance.teamPage.filters.v1";
@@ -775,6 +775,12 @@ export default function TeamPage() {
   const showDepartmentPicker =
     role === "SUPER_ADMIN" || role === "ADMIN" ? departments.length > 0 : false;
 
+  const deptName = useMemo(() => {
+    const deptId = selectedDeptId ?? departmentId ?? null;
+    if (!deptId || deptId === ALL_DEPARTMENTS) return null;
+    return departments.find((d) => d.id === deptId)?.name ?? null;
+  }, [departments, selectedDeptId, departmentId]);
+
   const q = query.trim().toLowerCase();
   const matches = useCallback(
     (r: AttendanceRow) => {
@@ -915,6 +921,22 @@ export default function TeamPage() {
           {role === "TEAM_LEADER" && t("team.scope.teamLeader")}
         </strong>
       </p>
+
+      {role === "DEPT_MANAGER" && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 text-sm text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/25 dark:text-emerald-50">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="font-semibold">Department manager</div>
+            <div className="text-xs opacity-80">
+              {deptName ?? "—"}
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-emerald-900/90 dark:text-emerald-100/90">
+            <span className="font-medium">{name ?? "—"}</span>
+            {employeeId ? <span className="font-mono"> · {employeeId}</span> : null}
+            {email ? <span className="font-mono"> · {email}</span> : null}
+          </div>
+        </div>
+      )}
 
       {showDepartmentPicker && (
         <label className="text-sm">

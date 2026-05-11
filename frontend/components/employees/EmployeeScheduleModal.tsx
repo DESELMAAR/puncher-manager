@@ -155,19 +155,7 @@ export function EmployeeScheduleModal({
     apply();
     window.addEventListener("resize", apply);
     return () => window.removeEventListener("resize", apply);
-  }, [
-    anchor.top,
-    anchor.left,
-    anchor.width,
-    anchor.height,
-    user.id,
-    weekStart,
-    schedule,
-    loading,
-    editing,
-    saving,
-    sending,
-  ]);
+  }, [anchor, user.id, weekStart, schedule, loading, editing, saving, sending]);
 
   useEffect(() => {
     let cancelled = false;

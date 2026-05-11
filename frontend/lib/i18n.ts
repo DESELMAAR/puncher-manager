@@ -6,6 +6,7 @@ export type I18nKey =
   | "nav.myPunches"
   | "nav.notifications"
   | "nav.teamAttendance"
+  | "nav.analytics"
   | "nav.weeklySchedule"
   | "nav.departments"
   | "nav.teams"
@@ -63,6 +64,7 @@ const dict: Record<Language, Record<I18nKey, string>> = {
     "nav.myPunches": "My punches",
     "nav.notifications": "Notifications",
     "nav.teamAttendance": "Attendance",
+    "nav.analytics": "Analytics",
     "nav.weeklySchedule": "Weekly schedule",
     "nav.departments": "Departments",
     "nav.teams": "Teams",
@@ -120,6 +122,7 @@ const dict: Record<Language, Record<I18nKey, string>> = {
     "nav.myPunches": "Mes pointages",
     "nav.notifications": "Notifications",
     "nav.teamAttendance": "Présences",
+    "nav.analytics": "Analyses",
     "nav.weeklySchedule": "Planning hebdomadaire",
     "nav.departments": "Départements",
     "nav.teams": "Équipes",
@@ -177,6 +180,7 @@ const dict: Record<Language, Record<I18nKey, string>> = {
     "nav.myPunches": "Mis fichajes",
     "nav.notifications": "Notificaciones",
     "nav.teamAttendance": "Asistencia",
+    "nav.analytics": "Analítica",
     "nav.weeklySchedule": "Horario semanal",
     "nav.departments": "Departamentos",
     "nav.teams": "Equipos",

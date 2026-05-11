@@ -37,6 +37,7 @@ const links: { href: string; labelKey: I18nKey; roles: UserRole[] }[] = [
   { href: "/history", labelKey: "nav.myPunches", roles: ["EMPLOYEE"] },
   { href: "/notifications", labelKey: "nav.notifications", roles: ["SUPER_ADMIN", "ADMIN", "DEPT_MANAGER", "TEAM_LEADER", "EMPLOYEE"] },
   { href: "/team", labelKey: "nav.teamAttendance", roles: ["TEAM_LEADER", "DEPT_MANAGER", "SUPER_ADMIN", "ADMIN"] },
+  { href: "/analytics", labelKey: "nav.analytics", roles: ["TEAM_LEADER", "DEPT_MANAGER", "SUPER_ADMIN", "ADMIN"] },
   {
     href: "/admin/schedule",
     labelKey: "nav.weeklySchedule",

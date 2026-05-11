@@ -23,11 +23,13 @@ C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\w
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\AttendanceRecord.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\WeeklySchedule.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\controller\AuthController.java
+C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\AttendanceAnalyticsPointDto.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\controller\NotificationController.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\WeeklyScheduleUpsertRequest.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\LoginResponse.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\bootstrap\DataSeeder.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\security\JwtAuthenticationFilter.java
+C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\MailService.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\CompanySettingsUpsertRequest.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\CompanySettingsService.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\DepartmentDurationsRequest.java
@@ -59,12 +61,15 @@ C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\w
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\Punch.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\User.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\controller\DepartmentController.java
+C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\AttendanceAbsentEmployeeDto.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\repository\AttendanceRecordRepository.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\repository\ScheduleConfirmationRepository.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\repository\PunchRepository.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\controller\UserController.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\AttendanceExportService.java
+C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\AttendanceLateDayDto.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\DepartmentResponse.java
+C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\AttendanceAnalyticsResponseDto.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\repository\WeeklyScheduleRepository.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\Team.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\CompanySettings.java
@@ -72,6 +77,7 @@ C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\s
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\AttendanceService.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\DepartmentGraceRequest.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\JwtService.java
+C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\AttendanceLateEmployeeDto.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\DepartmentService.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\WeeklyScheduleResponse.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\controller\PunchController.java

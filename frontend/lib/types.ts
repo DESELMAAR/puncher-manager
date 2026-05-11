@@ -61,6 +61,58 @@ export interface AttendanceOverviewGroupDto {
   rows: AttendanceRow[];
 }
 
+export interface AttendanceAnalyticsPointDto {
+  periodStart: string; // YYYY-MM-DD
+  /** Share of records ON_TIME (solid blue segment). */
+  onTimePct: number;
+  latePct: number;
+  absentPct: number;
+  avgWorkHours: number | null;
+  /** For late rows: sum(late minutes) / sum(work minutes), 0–100; null if not applicable. */
+  lateTimeVsWorkPct: number | null;
+}
+
+export interface AttendanceLateEmployeeDto {
+  userId: string;
+  name: string;
+  employeeId: string;
+  departmentName: string | null;
+  teamName: string | null;
+  totalLateMinutes: number;
+  lateDayCount: number;
+}
+
+export interface AttendanceLateDayDto {
+  recordDate: string;
+  minutesLate: number;
+}
+
+export interface AttendanceAbsentEmployeeDto {
+  userId: string;
+  name: string;
+  employeeId: string;
+  departmentName: string | null;
+  teamName: string | null;
+  absentDayCount: number;
+  absentDates: string[];
+}
+
+export interface AttendanceAnalyticsResponseDto {
+  from: string; // YYYY-MM-DD
+  to: string; // YYYY-MM-DD
+  totalRecords: number;
+  presentCount: number;
+  lateCount: number;
+  absentCount: number;
+  presentPct: number;
+  latePct: number;
+  absentPct: number;
+  avgWorkHours: number | null;
+  daily: AttendanceAnalyticsPointDto[];
+  weekly: AttendanceAnalyticsPointDto[];
+  monthly: AttendanceAnalyticsPointDto[];
+}
+
 export interface CompanySettingsDto {
   id: string | null;
   companyName: string | null;

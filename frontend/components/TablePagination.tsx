@@ -1,3 +1,5 @@
+import { getPageRange } from "@/lib/pagination";
+
 type TablePaginationProps = {
   page: number;
   totalPages: number;
@@ -15,8 +17,7 @@ export function TablePagination({
 }: TablePaginationProps) {
   if (totalItems <= 0) return null;
 
-  const from = (page - 1) * pageSize + 1;
-  const to = Math.min(page * pageSize, totalItems);
+  const { from, to } = getPageRange(page, pageSize, totalItems);
 
   return (
     <div className="flex flex-col items-center gap-2 border-t border-zinc-100 px-4 py-3 dark:border-zinc-800">

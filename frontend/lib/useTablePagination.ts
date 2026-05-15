@@ -1,17 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
+import { getTotalPages, slicePage, TABLE_PAGE_SIZE } from "@/lib/pagination";
 
-export const TABLE_PAGE_SIZE = 15;
+export { TABLE_PAGE_SIZE };
 
 export function useTablePagination<T>(items: T[], resetDeps: unknown[] = []) {
   const [page, setPage] = useState(1);
 
   const totalItems = items.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / TABLE_PAGE_SIZE));
+  const totalPages = getTotalPages(totalItems);
 
-  const paginatedItems = useMemo(() => {
-    const start = (page - 1) * TABLE_PAGE_SIZE;
-    return items.slice(start, start + TABLE_PAGE_SIZE);
-  }, [items, page]);
+  const paginatedItems = useMemo(() => slicePage(items, page), [items, page]);
 
   useEffect(() => {
     setPage(1);

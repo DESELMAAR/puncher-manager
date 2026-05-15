@@ -6,6 +6,8 @@ import { api } from "@/lib/api";
 import { extractApiMessage } from "@/lib/errors";
 import type { DepartmentDto, UserDto } from "@/lib/types";
 import { ModalScrim } from "@/components/ModalScrim";
+import { TablePagination } from "@/components/TablePagination";
+import { useTablePagination } from "@/lib/useTablePagination";
 import { useAuthStore } from "@/store/authStore";
 
 export default function DepartmentsAdminPage() {
@@ -36,6 +38,15 @@ export default function DepartmentsAdminPage() {
     for (const u of users) m.set(u.id, u.name);
     return m;
   }, [users]);
+
+  const {
+    page,
+    setPage,
+    totalPages,
+    paginatedItems: paginatedRows,
+    totalItems,
+    pageSize,
+  } = useTablePagination(rows);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -167,7 +178,7 @@ export default function DepartmentsAdminPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((d) => (
+              {paginatedRows.map((d) => (
                 <tr
                   key={d.id}
                   className="border-b border-zinc-100 shadow-[inset_0_0_0_2px_rgba(0,0,0,0)] transition hover:bg-zinc-50/70 hover:shadow-[inset_0_0_0_2px_rgba(16,185,129,0.35)] dark:border-zinc-800 dark:hover:bg-zinc-900/40 dark:hover:shadow-[inset_0_0_0_2px_rgba(16,185,129,0.25)]"
@@ -202,6 +213,13 @@ export default function DepartmentsAdminPage() {
               ))}
             </tbody>
           </table>
+          <TablePagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={setPage}
+          />
         </div>
       )}
 

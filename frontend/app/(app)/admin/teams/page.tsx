@@ -6,6 +6,8 @@ import { api } from "@/lib/api";
 import { extractApiMessage } from "@/lib/errors";
 import type { DepartmentDto, TeamDto, UserDto } from "@/lib/types";
 import { ModalScrim } from "@/components/ModalScrim";
+import { TablePagination } from "@/components/TablePagination";
+import { useTablePagination } from "@/lib/useTablePagination";
 import { useAuthStore } from "@/store/authStore";
 
 export default function TeamsAdminPage() {
@@ -108,6 +110,15 @@ export default function TeamsAdminPage() {
     for (const u of users) m.set(u.id, u.name);
     return m;
   }, [users]);
+
+  const {
+    page,
+    setPage,
+    totalPages,
+    paginatedItems: paginatedTeams,
+    totalItems,
+    pageSize,
+  } = useTablePagination(teams, [effectiveDeptId]);
 
   useEffect(() => {
     if (!modalOpen) return;
@@ -265,7 +276,7 @@ export default function TeamsAdminPage() {
               </tr>
             </thead>
             <tbody>
-              {teams.map((t) => (
+              {paginatedTeams.map((t) => (
                 <tr
                   key={t.id}
                   className="border-b border-zinc-100 shadow-[inset_0_0_0_2px_rgba(0,0,0,0)] transition hover:bg-zinc-50/70 hover:shadow-[inset_0_0_0_2px_rgba(16,185,129,0.35)] dark:border-zinc-800 dark:hover:bg-zinc-900/40 dark:hover:shadow-[inset_0_0_0_2px_rgba(16,185,129,0.25)]"
@@ -297,6 +308,13 @@ export default function TeamsAdminPage() {
               ))}
             </tbody>
           </table>
+          <TablePagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={setPage}
+          />
           {teams.length === 0 && (
             <p className="px-4 py-6 text-center text-sm text-zinc-500">
               No teams in this department yet.

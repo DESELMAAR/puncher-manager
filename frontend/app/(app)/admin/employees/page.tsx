@@ -9,6 +9,8 @@ import { extractApiMessage } from "@/lib/errors";
 import type { DepartmentDto, TeamDto, UserDto, UserRole } from "@/lib/types";
 import type { SchedulePopoverAnchor } from "@/components/employees/EmployeeScheduleModal";
 import { ModalScrim } from "@/components/ModalScrim";
+import { TablePagination } from "@/components/TablePagination";
+import { useTablePagination } from "@/lib/useTablePagination";
 import { useAuthStore } from "@/store/authStore";
 
 /** Visual theme per team section (cycles if there are more teams than entries). */
@@ -252,6 +254,50 @@ export default function EmployeesAdminPage() {
     return sections;
   }, [directory, teamNameById]);
 
+  const sortedDirectory = useMemo(() => {
+    return [...directory].sort((a, b) => {
+      const teamA = a.teamId ? (teamNameById.get(a.teamId) ?? "") : "\uffff";
+      const teamB = b.teamId ? (teamNameById.get(b.teamId) ?? "") : "\uffff";
+      const byTeam = teamA.localeCompare(teamB, undefined, { sensitivity: "base" });
+      if (byTeam !== 0) return byTeam;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    });
+  }, [directory, teamNameById]);
+
+  const {
+    page,
+    setPage,
+    totalPages,
+    paginatedItems: paginatedDirectory,
+    totalItems,
+    pageSize,
+  } = useTablePagination(sortedDirectory, [selectedDeptId, viewerRole, authDeptId]);
+
+  const paginatedByTeam = useMemo(() => {
+    const themeByTeamId = new Map<string, (typeof TEAM_SECTION_THEMES)[number] | typeof NO_TEAM_THEME>();
+    for (const section of directoryByTeam) {
+      themeByTeamId.set(section.teamId, section.theme);
+    }
+    const byTeam = new Map<string, UserDto[]>();
+    for (const u of paginatedDirectory) {
+      const key = u.teamId ?? "";
+      if (!byTeam.has(key)) byTeam.set(key, []);
+      byTeam.get(key)!.push(u);
+    }
+    const teamIds = Array.from(byTeam.keys()).sort((a, b) => {
+      if (a === "") return 1;
+      if (b === "") return -1;
+      const na = teamNameById.get(a) ?? a;
+      const nb = teamNameById.get(b) ?? b;
+      return na.localeCompare(nb, undefined, { sensitivity: "base" });
+    });
+    return teamIds.map((teamId) => ({
+      teamId,
+      users: byTeam.get(teamId) ?? [],
+      theme: themeByTeamId.get(teamId) ?? NO_TEAM_THEME,
+    }));
+  }, [paginatedDirectory, directoryByTeam, teamNameById]);
+
   const canManage =
     viewerRole === "SUPER_ADMIN" ||
     viewerRole === "ADMIN" ||
@@ -418,7 +464,7 @@ export default function EmployeesAdminPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {directoryByTeam.map(({ teamId, users, theme }) => (
+            {paginatedByTeam.map(({ teamId, users, theme }) => (
               <div
                 key={teamId || "no-team"}
                 className={`overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900 ${theme.bar} border-l-4`}
@@ -576,6 +622,13 @@ export default function EmployeesAdminPage() {
                 </div>
               </div>
             ))}
+            <TablePagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
           </div>
         )}
       </div>

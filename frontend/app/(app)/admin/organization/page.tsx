@@ -7,8 +7,10 @@ import {
   type StaffFormState,
 } from "@/components/admin/StaffUserModal";
 import { ModalScrim } from "@/components/ModalScrim";
+import { TablePagination } from "@/components/TablePagination";
 import { api } from "@/lib/api";
 import { extractApiMessage } from "@/lib/errors";
+import { useTablePagination } from "@/lib/useTablePagination";
 import type { DepartmentDto, TeamDto, UserDto, UserRole } from "@/lib/types";
 import { useAuthStore } from "@/store/authStore";
 
@@ -208,6 +210,15 @@ export default function OrganizationAdminPage() {
       return hay.includes(q);
     });
   }, [sortedRows, query, roleFilter, deptFilter, teamFilter]);
+
+  const {
+    page,
+    setPage,
+    totalPages,
+    paginatedItems: paginatedRows,
+    totalItems,
+    pageSize,
+  } = useTablePagination(filteredRows, [query, roleFilter, deptFilter, teamFilter]);
 
   async function handleSubmit(form: StaffFormState) {
     try {
@@ -431,7 +442,7 @@ export default function OrganizationAdminPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredRows.map((u) => (
+              {paginatedRows.map((u) => (
                 <tr
                   key={u.id}
                   className="border-b border-zinc-100 shadow-[inset_0_0_0_2px_rgba(0,0,0,0)] transition hover:bg-zinc-50/70 hover:shadow-[inset_0_0_0_2px_rgba(16,185,129,0.35)] dark:border-zinc-800 dark:hover:bg-zinc-900/40 dark:hover:shadow-[inset_0_0_0_2px_rgba(16,185,129,0.25)]"
@@ -481,6 +492,13 @@ export default function OrganizationAdminPage() {
               )}
             </tbody>
           </table>
+          <TablePagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={setPage}
+          />
         </div>
       )}
 

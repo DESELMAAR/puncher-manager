@@ -12,6 +12,21 @@ This document describes the automated tests in the project: what they cover, how
 | Frontend | `npm test`           | `frontend/` |
 | Frontend (watch) | `npm run test:watch` | `frontend/` |
 
+## CI pipeline (GitHub Actions)
+
+Workflow file: **`.github/workflows/ci.yml`**
+
+Runs on every **push** and **pull request** to `main`, and can be started manually (**Actions → CI → Run workflow**).
+
+| Job | Steps |
+|-----|--------|
+| **Backend (Maven)** | JDK 17 → `mvn -B test` in `backend/` |
+| **Frontend (Next.js)** | Node 20 → `npm ci` → `npm run lint` → `npm test` → `npm run build` in `frontend/` |
+
+Both jobs run **in parallel**. A PR must pass both before merge (if branch protection is enabled on GitHub).
+
+After pushing the workflow to GitHub, open **https://github.com/DESELMAAR/puncher-manager/actions** to see runs.
+
 **Backend:** uses the `test` Spring profile (`application-test.yml`), an in-memory **H2** database, and does **not** run the demo data seeder (`DataSeeder` is disabled with `@Profile("!test")`).
 
 **Frontend:** uses **Vitest** with **jsdom** and **React Testing Library**.

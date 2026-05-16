@@ -407,7 +407,36 @@ Add these under **Settings → Secrets and variables → Actions** in your GitHu
 | `DOCKERHUB_USERNAME` | Your Docker Hub username (e.g. `deselmaar`) |
 | `DOCKERHUB_TOKEN` | A [Docker Hub access token](https://hub.docker.com/settings/security) (not your account password) |
 
-Create the token with **Read & Write** access. Without these secrets, push steps on `main` will fail at login.
+Create the token with **Write** access (Docker Hub labels this **Read, Write, or Delete** — you need at least **Write**, not **Read-only**). Without these secrets, push steps on `main` will fail at login.
+
+### Troubleshooting: `401 Unauthorized` / `insufficient scopes`
+
+If the **Docker build & push** job fails with:
+
+```text
+failed to fetch oauth token ... 401 Unauthorized: access token has insufficient scopes
+```
+
+work through this checklist:
+
+| Check | What to do |
+|-------|------------|
+| **Token permissions** | [Docker Hub → Account settings → Personal access tokens](https://hub.docker.com/settings/security). Create a **new** token and enable **Write** (or Read + Write + Delete). Read-only tokens cannot push. |
+| **Use a PAT, not your password** | `DOCKERHUB_TOKEN` must be the token string from “Generate new token”, not your Docker Hub login password. |
+| **Username matches token owner** | `DOCKERHUB_USERNAME` must be the exact Docker Hub **namespace** you push to (your login name, e.g. `deselmaar`). It is case-sensitive. |
+| **Secrets not swapped** | `DOCKERHUB_USERNAME` = username only. `DOCKERHUB_TOKEN` = long token string only. |
+| **No extra whitespace** | When pasting into GitHub Secrets, do not add spaces or newlines before/after the value. |
+| **Re-save after rotating** | After creating a new token, update the `DOCKERHUB_TOKEN` secret and re-run the workflow. |
+
+**Verify locally** (replace `USER` and paste token when prompted):
+
+```bash
+docker login -u USER
+docker tag hello-world USER/puncher-manager-backend:local-test
+docker push USER/puncher-manager-backend:local-test
+```
+
+If local `docker push` fails with the same error, fix the token on Docker Hub before re-running CI.
 
 ### Image names and tags on Docker Hub
 

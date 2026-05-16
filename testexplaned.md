@@ -22,8 +22,9 @@ Runs on every **push** and **pull request** to `main`, and can be started manual
 |-----|--------|
 | **Backend (Maven)** | JDK 17 → `mvn -B test` in `backend/` |
 | **Frontend (Next.js)** | Node 20 → `npm ci` → `npm run lint` → `npm test` → `npm run build` in `frontend/` |
+| **Docker build & push** | After both pass → build images; push to Docker Hub on `main` (PRs build only) |
 
-Both jobs run **in parallel**. A PR must pass both before merge (if branch protection is enabled on GitHub).
+Backend and frontend test jobs run **in parallel**; Docker runs **after** both succeed.
 
 After pushing the workflow to GitHub, open **https://github.com/DESELMAAR/puncher-manager/actions** to see runs.
 

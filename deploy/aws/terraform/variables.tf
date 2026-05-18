@@ -16,9 +16,15 @@ variable "dockerhub_username" {
 }
 
 variable "image_tag" {
-  description = "Docker image tag to deploy"
+  description = "Docker image tag for backend"
   type        = string
   default     = "latest"
+}
+
+variable "frontend_image_tag" {
+  description = "Docker image tag for frontend (use aws after prod rebuild with ALB URL)"
+  type        = string
+  default     = null
 }
 
 variable "db_name" {

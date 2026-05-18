@@ -1,3 +1,7 @@
+locals {
+  frontend_image_tag = coalesce(var.frontend_image_tag, var.image_tag)
+}
+
 resource "aws_ecs_cluster" "main" {
   name = "${var.project_name}-cluster"
 
@@ -71,7 +75,7 @@ resource "aws_ecs_task_definition" "frontend" {
   container_definitions = jsonencode([
     {
       name      = "frontend"
-      image     = "${var.dockerhub_username}/puncher-manager-frontend:${var.image_tag}"
+      image     = "${var.dockerhub_username}/puncher-manager-frontend:${local.frontend_image_tag}"
       essential = true
       portMappings = [
         {

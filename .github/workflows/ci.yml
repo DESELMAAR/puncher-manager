@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD
 
 on:
   push:
@@ -114,6 +114,19 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=,format=short
 
+      - name: Resolve frontend API URL
+        id: frontend-api
+        env:
+          PRODUCTION_APP_URL: ${{ secrets.PRODUCTION_APP_URL }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "url=http://localhost:8080" >> "$GITHUB_OUTPUT"
+          elif [ -n "$PRODUCTION_APP_URL" ]; then
+            echo "url=$PRODUCTION_APP_URL" >> "$GITHUB_OUTPUT"
+          else
+            echo "url=http://localhost:8080" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build and push frontend image
         uses: docker/build-push-action@v6
         with:
@@ -123,6 +136,45 @@ jobs:
           tags: ${{ steps.meta-frontend.outputs.tags }}
           labels: ${{ steps.meta-frontend.outputs.labels }}
           build-args: |
-            NEXT_PUBLIC_API_URL=http://localhost:8080
+            NEXT_PUBLIC_API_URL=${{ steps.frontend-api.outputs.url }}
+          no-cache: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
+
+  deploy-aws:
+    name: Deploy to AWS (ECS)
+    runs-on: ubuntu-latest
+    needs: [docker]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'eu-west-1' }}
+
+      - name: Roll out backend on ECS
+        run: |
+          aws ecs update-service \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --service "${{ vars.ECS_SERVICE_BACKEND }}" \
+            --force-new-deployment \
+            --output text \
+            --query 'service.serviceName'
+
+      - name: Roll out frontend on ECS
+        run: |
+          aws ecs update-service \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --service "${{ vars.ECS_SERVICE_FRONTEND }}" \
+            --force-new-deployment \
+            --output text \
+            --query 'service.serviceName'
+
+      - name: Wait for ECS services to stabilize
+        run: |
+          aws ecs wait services-stable \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --services "${{ vars.ECS_SERVICE_BACKEND }}" "${{ vars.ECS_SERVICE_FRONTEND }}"

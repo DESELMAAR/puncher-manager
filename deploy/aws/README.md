@@ -36,6 +36,16 @@ One public URL serves the UI and API (`/api/...` routes to Spring Boot).
    - `<user>/puncher-manager-frontend:latest`
 5. **GitHub secrets** for CI are set (`DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`).
 
+### Automate deploy on every push to `main`
+
+See **[`cicd-explained.md`](../../cicd-explained.md)** (beginner-friendly) for the full CI/CD glossary and setup:
+
+- GitHub Secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `PRODUCTION_APP_URL`
+- GitHub Variables: `AWS_REGION`, `ECS_CLUSTER`, `ECS_SERVICE_BACKEND`, `ECS_SERVICE_FRONTEND`
+- IAM policy: `deploy/aws/github-actions-deploy-policy.json`
+
+Pipeline file: `.github/workflows/ci.yml` (workflow name **CI/CD**).
+
 ---
 
 ## Step-by-step: ECS + Terraform (recommended)

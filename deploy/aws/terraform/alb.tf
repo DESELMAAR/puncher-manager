@@ -19,12 +19,12 @@ resource "aws_lb_target_group" "backend" {
   target_type = "ip"
 
   health_check {
-    path                = "/swagger-ui.html"
+    path    = "/actuator/health"
     healthy_threshold   = 2
     unhealthy_threshold = 3
     timeout             = 10
     interval            = 30
-    matcher             = "200"
+    matcher             = "200,301,302,403"
   }
 
   tags = {

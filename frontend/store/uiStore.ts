@@ -20,7 +20,10 @@ export const useUiStore = create<UiState>()(
       backgroundTheme: "DEFAULT",
       setBackgroundTheme: (t) => set({ backgroundTheme: t }),
     }),
-    { name: "puncher-ui" },
+    {
+      name: "puncher-ui",
+      partialize: (state) => ({ backgroundTheme: state.backgroundTheme }),
+    },
   ),
 );
 

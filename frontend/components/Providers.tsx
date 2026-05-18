@@ -69,7 +69,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         >
           {dark ? t(lang, "theme.light") : t(lang, "theme.dark")}
         </button>
-        <div className="relative">
+        <div ref={themeMenuRef} className="relative">
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
@@ -106,7 +106,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
                   key={id}
                   type="button"
                   onClick={() => {
-                    setTheme(id as BackgroundTheme);
+                    const next = id as BackgroundTheme;
+                    setTheme(next);
+                    applyBackgroundThemeToDocument(next);
                     setOpen(false);
                   }}
                   className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 ${

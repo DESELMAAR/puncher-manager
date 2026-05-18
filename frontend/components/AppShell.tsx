@@ -56,7 +56,7 @@ const links: { href: string; labelKey: I18nKey; roles: UserRole[] }[] = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { role, name, clear, token } = useAuthStore();
+  const { role, name, email, clear, token } = useAuthStore();
   const [refreshKey, setRefreshKey] = useState(0);
   const backgroundTheme = useUiStore((s) => s.backgroundTheme);
   const lang = useI18nStore((s) => s.lang);
@@ -161,8 +161,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="fixed inset-y-0 left-0 w-56 border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div className="border-b border-zinc-200 px-4 py-4 dark:border-zinc-800">
           <div className="text-lg font-semibold">Puncher Manager</div>
-          <div className="truncate text-xs text-zinc-500">{name}</div>
-          <div className="text-xs text-zinc-400">{role}</div>
+          {name ? (
+            <div
+              className="mt-1 truncate text-sm font-medium text-zinc-800 dark:text-zinc-100"
+              title={name}
+            >
+              {name}
+            </div>
+          ) : null}
+          {email ? (
+            <div
+              className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400"
+              title={email}
+            >
+              {email}
+            </div>
+          ) : null}
+          {role ? <div className="mt-0.5 text-xs text-zinc-400">{role}</div> : null}
         </div>
         <nav className="flex flex-col gap-1 p-2">
           {visible.map((l) => (

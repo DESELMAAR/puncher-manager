@@ -1,0 +1,36 @@
+# Production compose: pull images from Docker Hub + external RDS (no Postgres container).
+# On EC2: copy env.example → .env.prod, then:
+#   docker compose -f deploy/aws/docker-compose.prod.yml --env-file deploy/aws/.env.prod up -d
+
+services:
+  backend:
+    image: ${DOCKERHUB_USERNAME}/puncher-manager-backend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-puncher_db}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-28800000}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL}
+      SERVER_PORT: "8080"
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+
+  frontend:
+    image: ${DOCKERHUB_USERNAME}/puncher-manager-frontend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+    depends_on:
+      - backend

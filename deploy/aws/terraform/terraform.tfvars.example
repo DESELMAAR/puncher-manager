@@ -1,0 +1,7 @@
+aws_region         = "eu-west-1"
+project_name       = "puncher-manager"
+dockerhub_username = "maarousamad"
+image_tag          = "latest"
+
+db_password = "CHANGE_ME_STRONG_DB_PASSWORD"
+jwt_secret  = "CHANGE_ME_LONG_RANDOM_JWT_SECRET_MIN_32_CHARS"

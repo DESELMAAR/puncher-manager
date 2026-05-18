@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Toaster } from "sonner";
+import { applyBackgroundThemeToDocument } from "@/lib/backgroundTheme";
 import { useUiStore, type BackgroundTheme } from "@/store/uiStore";
 import { useI18nStore, type Language } from "@/store/i18nStore";
 import { t } from "@/lib/i18n";
@@ -44,6 +45,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
     localStorage.setItem("puncher-theme", dark ? "dark" : "light");
     document.documentElement.classList.toggle("dark", dark);
   }, [dark]);
+
+  useEffect(() => {
+    applyBackgroundThemeToDocument(theme);
+  }, [theme]);
+
+  useEffect(() => {
+    const apply = () => applyBackgroundThemeToDocument(useUiStore.getState().backgroundTheme);
+    apply();
+    return useUiStore.persist.onFinishHydration(apply);
+  }, []);
 
   return (
     <>

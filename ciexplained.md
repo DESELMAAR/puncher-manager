@@ -2,9 +2,10 @@
 
 This document walks through **every part** of the continuous integration (CI) workflow for Puncher Manager.
 
-**Workflow file:** `.github/workflows/ci.yml`  
+**Workflow file:** `.github/workflows/ci.yml` (workflow name: **CI/CD**)  
 **Platform:** [GitHub Actions](https://docs.github.com/en/actions)  
-**Repository:** `https://github.com/DESELMAAR/puncher-manager`
+**Repository:** `https://github.com/DESELMAAR/puncher-manager`  
+**Full CI/CD beginner guide (push → AWS):** [`cicd-explained.md`](cicd-explained.md)
 
 ---
 
@@ -42,10 +43,28 @@ Push or PR to main  ──►  GitHub starts workflow "CI"
                     Job: Docker build & push (after both)
                     build images; push to Docker Hub on main
                               ▼
-                    All green = CI passed
+                    Deploy to AWS (main only)
+                              ▼
+                    All green = CI/CD passed
 ```
 
-The **backend** and **frontend** test jobs do **not** depend on each other. The **Docker** job runs only after **both** succeed (`needs: [backend, frontend]`).
+The **backend** and **frontend** test jobs do **not** depend on each other. The **Docker** job runs only after **both** succeed (`needs: [backend, frontend]`). On **push to `main`**, **Deploy to AWS** runs after Docker and restarts ECS services.
+
+**CI/CD schema (Mermaid diagrams, AWS layout, sequence chart):** see [`cicd-explained.md` → CI/CD schema`](cicd-explained.md#cicd-schema-diagrams).
+
+```mermaid
+flowchart LR
+  subgraph jobs["GitHub Actions jobs"]
+    BE[Backend]
+    FE[Frontend]
+    DO[Docker]
+    DEP[deploy-aws]
+  end
+  BE --> DO
+  FE --> DO
+  DO --> DEP
+  DEP --> ECS[AWS ECS]
+```
 
 ---
 

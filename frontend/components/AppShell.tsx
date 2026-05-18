@@ -6,30 +6,13 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import type { NotificationDto, UserRole } from "@/lib/types";
 import { CompanyHeader } from "@/components/company/CompanyHeader";
-import { useUiStore, type BackgroundTheme } from "@/store/uiStore";
+import { backgroundShellClass } from "@/lib/backgroundTheme";
+import { useUiStore } from "@/store/uiStore";
 import { useI18nStore } from "@/store/i18nStore";
 import { t } from "@/lib/i18n";
 import type { I18nKey } from "@/lib/i18n";
 import { api } from "@/lib/api";
 import type { CompanySettingsDto } from "@/lib/types";
-
-function backgroundClass(t: BackgroundTheme) {
-  switch (t) {
-    case "ROSE":
-      return "bg-rose-50 dark:bg-rose-950/40";
-    case "OCEAN":
-      return "bg-sky-50 dark:bg-sky-950/40";
-    case "FOREST":
-      return "bg-emerald-50 dark:bg-emerald-950/35";
-    case "SUNSET":
-      return "bg-amber-50 dark:bg-amber-950/35";
-    case "VIOLET":
-      return "bg-violet-50 dark:bg-violet-950/35";
-    case "DEFAULT":
-    default:
-      return "bg-[rgb(211,218,217)] dark:bg-[#44444E]";
-  }
-}
 
 const links: { href: string; labelKey: I18nKey; roles: UserRole[] }[] = [
   { href: "/dashboard", labelKey: "nav.dashboard", roles: ["SUPER_ADMIN", "ADMIN", "DEPT_MANAGER", "TEAM_LEADER", "EMPLOYEE"] },
@@ -158,11 +141,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [token]);
 
+  const useCompanyBackgroundImage =
+    backgroundTheme === "DEFAULT" && Boolean(bgUrl);
+
   return (
     <div
-      className={`min-h-screen text-zinc-900 dark:text-zinc-200 ${backgroundClass(backgroundTheme)}`}
+      className={`min-h-screen text-zinc-900 dark:text-zinc-200 ${backgroundShellClass(backgroundTheme)}`}
       style={
-        bgUrl
+        useCompanyBackgroundImage
           ? {
               backgroundImage: `url(${bgUrl})`,
               backgroundSize: "cover",

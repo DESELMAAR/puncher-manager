@@ -2,6 +2,16 @@
 
 Full-stack attendance and shift management system for a final-year project: **Spring Boot 3** (Java 17), **PostgreSQL**, **Next.js 14** (App Router), **JWT** security, role-based UI, mock planning API, nightly absence job, team notifications with **SSE**, and **CSV** attendance export.
 
+## CI/CD
+
+Push to `main` runs tests, builds Docker images, pushes to Docker Hub, and deploys to **AWS ECS** automatically.
+
+| Doc | Content |
+|-----|---------|
+| [`cicd-explained.md`](cicd-explained.md) | Beginner guide + **CI/CD schema** (diagrams) |
+| [`ciexplained.md`](ciexplained.md) | Each workflow step in detail |
+| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | Pipeline definition |
+
 ## Repository layout
 
 | Path | Description |

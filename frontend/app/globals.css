@@ -5,16 +5,56 @@
 :root {
   --background: rgb(211, 218, 217);
   --foreground: #18181b;
+  --app-background: rgb(211, 218, 217);
 }
 
 .dark {
-  --background: #44444E;
+  --background: #44444e;
   --foreground: #fafafa;
 }
 
+/* Bg picker themes (synced via html[data-bg-theme] in Providers) */
+html[data-bg-theme="DEFAULT"] {
+  --app-background: rgb(211, 218, 217);
+}
+html.dark[data-bg-theme="DEFAULT"] {
+  --app-background: #44444e;
+}
+html[data-bg-theme="ROSE"] {
+  --app-background: #fff1f2;
+}
+html.dark[data-bg-theme="ROSE"] {
+  --app-background: #4c0519;
+}
+html[data-bg-theme="OCEAN"] {
+  --app-background: #f0f9ff;
+}
+html.dark[data-bg-theme="OCEAN"] {
+  --app-background: #082f49;
+}
+html[data-bg-theme="FOREST"] {
+  --app-background: #ecfdf5;
+}
+html.dark[data-bg-theme="FOREST"] {
+  --app-background: #022c22;
+}
+html[data-bg-theme="SUNSET"] {
+  --app-background: #fffbeb;
+}
+html.dark[data-bg-theme="SUNSET"] {
+  --app-background: #451a03;
+}
+html[data-bg-theme="VIOLET"] {
+  --app-background: #f5f3ff;
+}
+html.dark[data-bg-theme="VIOLET"] {
+  --app-background: #2e1065;
+}
+
 body {
-  background: var(--background);
+  background-color: var(--app-background);
   color: var(--foreground);
+  transition: background-color 0.2s ease;
 }
 
 /* Employees directory: full name cell — subtle tint + seamless L→R wave while schedule tooltip is open */

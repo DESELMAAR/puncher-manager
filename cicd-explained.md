@@ -38,6 +38,180 @@ Users open your URL in the browser
 
 ---
 
+## CI/CD schema (diagrams)
+
+### 1. Pipeline schema — jobs and order
+
+This is the **automation** side: what GitHub Actions runs after you push.
+
+```mermaid
+flowchart TB
+  subgraph trigger["Trigger"]
+    PUSH["git push to main"]
+    PR["pull request → main"]
+    MANUAL["Run workflow manually"]
+  end
+
+  subgraph ci["CI — Continuous Integration"]
+    direction TB
+  end
+
+  subgraph parallel["Parallel jobs"]
+    BE["Job: Backend\nmvn test"]
+    FE["Job: Frontend\nlint · test · build"]
+  end
+
+  subgraph docker["Build & registry"]
+    DK["Job: Docker\nbuild images"]
+    DH["Docker Hub\nbackend:latest\nfrontend:latest"]
+  end
+
+  subgraph cd["CD — Continuous Deployment\n(main push only)"]
+    DEP["Job: deploy-aws\nECS force new deployment"]
+  end
+
+  subgraph aws_runtime["AWS (already running)"]
+    ECS["ECS Fargate\nbackend + frontend tasks"]
+    ALB["Application Load Balancer"]
+    RDS["RDS PostgreSQL"]
+  end
+
+  PUSH --> BE
+  PUSH --> FE
+  PR --> BE
+  PR --> FE
+  MANUAL --> BE
+  MANUAL --> FE
+
+  BE --> DK
+  FE --> DK
+  DK -->|"push if main"| DH
+  DK -->|"PR: build only"| DK
+  DH --> DEP
+  DEP --> ECS
+  ECS --> ALB
+  ECS --> RDS
+  ALB --> USER["Users in browser"]
+```
+
+| Arrow | Meaning |
+|-------|--------|
+| Backend + Frontend **in parallel** | Both must pass before Docker runs (`needs: [backend, frontend]`). |
+| Docker → Docker Hub | Only on **push to `main`** (not on PRs). |
+| Docker Hub → deploy-aws | ECS pulls `:latest` images after you push. |
+| deploy-aws → ECS | `aws ecs update-service --force-new-deployment` (no Terraform on each push). |
+
+---
+
+### 2. Runtime schema — how AWS serves traffic
+
+This is the **live app** side (created once with Terraform; stays up between deploys).
+
+```mermaid
+flowchart LR
+  subgraph internet["Internet"]
+    BROWSER["Browser"]
+  end
+
+  subgraph aws["AWS eu-west-1"]
+    ALB["ALB\npuncher-manager-alb-....elb.amazonaws.com"]
+
+    subgraph ecs["ECS cluster: puncher-manager-cluster"]
+      FE_TASK["Frontend task\nNext.js :3000"]
+      BE_TASK["Backend task\nSpring Boot :8080"]
+    end
+
+    RDS["RDS PostgreSQL\npuncher_db"]
+  end
+
+  subgraph registry["Docker Hub"]
+    IMG_FE["maarousamad/\npuncher-manager-frontend:latest"]
+    IMG_BE["maarousamad/\npuncher-manager-backend:latest"]
+  end
+
+  BROWSER -->|"GET /login"| ALB
+  ALB -->|"path /*"| FE_TASK
+  ALB -->|"path /api/*"| BE_TASK
+  BE_TASK --> RDS
+  IMG_FE -.->|"pulled on deploy"| FE_TASK
+  IMG_BE -.->|"pulled on deploy"| BE_TASK
+```
+
+| Path on ALB | Goes to | Example |
+|-------------|---------|---------|
+| `/api/*` | Backend container | `POST /api/auth/login` |
+| Everything else (`/`, `/login`, …) | Frontend container | Login page, dashboard |
+
+The browser calls **one host** (the ALB). `NEXT_PUBLIC_API_URL` must be that host so login does not use `localhost`.
+
+---
+
+### 3. Sequence schema — one full deploy (push to `main`)
+
+```mermaid
+sequenceDiagram
+  actor Dev as You (developer)
+  participant GH as GitHub
+  participant GA as GitHub Actions
+  participant DH as Docker Hub
+  participant ECS as AWS ECS
+  participant ALB as AWS ALB
+  actor User as End user
+
+  Dev->>GH: git push main
+  GH->>GA: Start workflow CI/CD
+  GA->>GA: Test backend + frontend
+  GA->>GA: docker build (API URL = PRODUCTION_APP_URL)
+  GA->>DH: docker push :latest
+  GA->>ECS: force-new-deployment (backend + frontend)
+  ECS->>DH: pull latest images
+  ECS->>ECS: stop old tasks, start new tasks
+  GA->>GA: wait services-stable
+  User->>ALB: open app URL
+  ALB->>ECS: route request
+  ECS-->>User: new version response
+```
+
+---
+
+### 4. Trigger matrix (what runs when)
+
+| Event | Backend tests | Frontend tests | Push images | Deploy ECS |
+|-------|:-------------:|:--------------:|:-----------:|:----------:|
+| PR → `main` | Yes | Yes | No | No |
+| Push → `main` | Yes | Yes | Yes | Yes |
+| Manual run on `main` | Yes | Yes | Yes | Yes |
+| Push to other branch | No* | No* | No | No |
+
+\*Unless you open a PR targeting `main` — then only the PR column applies.
+
+---
+
+### 5. Secrets and variables in the schema
+
+```text
+┌──────────────────── GitHub repo ────────────────────┐
+│  Secrets (encrypted)          Variables (plain)      │
+│  • DOCKERHUB_USERNAME         • AWS_REGION           │
+│  • DOCKERHUB_TOKEN            • ECS_CLUSTER          │
+│  • AWS_ACCESS_KEY_ID          • ECS_SERVICE_BACKEND  │
+│  • AWS_SECRET_ACCESS_KEY      • ECS_SERVICE_FRONTEND │
+│  • PRODUCTION_APP_URL                              │
+└──────────────────────────┬──────────────────────────┘
+                           │ used during workflow
+                           ▼
+              Docker build · AWS CLI deploy
+```
+
+| Name | Used in job | Purpose |
+|------|-------------|---------|
+| `PRODUCTION_APP_URL` | Docker (frontend) | Bakes API URL into Next.js bundle |
+| `DOCKERHUB_*` | Docker | Login and push images |
+| `AWS_*` | deploy-aws | Authenticate to AWS |
+| `ECS_*` variables | deploy-aws | Which cluster/services to restart |
+
+---
+
 ## Terms glossary
 
 | Term | Simple meaning |

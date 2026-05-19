@@ -212,6 +212,7 @@ public class AttendanceService {
               u.getId(),
               u.getName(),
               u.getEmployeeId(),
+              u.getEmail(),
               u.getDepartment() != null ? u.getDepartment().getName() : null,
               u.getTeam() != null ? u.getTeam().getName() : null,
               u.getDepartment() != null && u.getDepartment().getAdmin() != null
@@ -374,6 +375,7 @@ public class AttendanceService {
                 u.getId(),
                 u.getName(),
                 u.getEmployeeId(),
+                u.getEmail(),
                 u.getDepartment() != null ? u.getDepartment().getName() : null,
                 u.getTeam() != null ? u.getTeam().getName() : null,
                 u.getDepartment() != null && u.getDepartment().getAdmin() != null

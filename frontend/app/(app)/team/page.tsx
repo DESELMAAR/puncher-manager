@@ -14,6 +14,7 @@ import { useAuthStore } from "@/store/authStore";
 import { withApiLoading } from "@/store/apiLoadingStore";
 import { localDateISO } from "@/lib/dateUtils";
 import { useT } from "@/lib/useT";
+import { EmployeeNameEmailTooltip } from "@/components/EmployeeNameEmailTooltip";
 
 function clientTimeZone(): string | undefined {
   try {
@@ -787,8 +788,7 @@ export default function TeamPage() {
       if (!q) return true;
       const name = (r.name ?? "").toLowerCase();
       const empId = (r.employeeId ?? "").toLowerCase();
-      // Email isn't currently included in AttendanceRow; keep this ready if you add it later.
-      const email = ((r as unknown as { email?: string }).email ?? "").toLowerCase();
+      const email = (r.email ?? "").toLowerCase();
       return name.includes(q) || empId.includes(q) || email.includes(q);
     },
     [q],
@@ -1307,7 +1307,11 @@ export default function TeamPage() {
                               ▾
                             </span>
                           </button>
-                          <span className="font-medium">{r.name}</span>
+                          <EmployeeNameEmailTooltip
+                            tooltipId={rowKey}
+                            name={r.name}
+                            email={r.email}
+                          />
                         </div>
                         {expanded && (
                           <div className="mt-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">
@@ -1517,7 +1521,11 @@ export default function TeamPage() {
                               ▾
                             </span>
                           </button>
-                          <span className="font-medium">{r.name}</span>
+                          <EmployeeNameEmailTooltip
+                            tooltipId={rowKey}
+                            name={r.name}
+                            email={r.email}
+                          />
                         </div>
                         {expanded && (
                           <div className="mt-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">

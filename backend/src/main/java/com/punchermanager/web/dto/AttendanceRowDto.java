@@ -10,6 +10,7 @@ public record AttendanceRowDto(
     UUID userId,
     String name,
     String employeeId,
+    String email,
     String departmentName,
     String teamName,
     String deptManagerName,

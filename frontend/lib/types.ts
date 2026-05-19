@@ -36,6 +36,7 @@ export interface AttendanceRow {
   userId: string;
   name: string;
   employeeId: string;
+  email?: string | null;
   departmentName?: string | null;
   teamName?: string | null;
   deptManagerName?: string | null;

@@ -13,6 +13,7 @@ import type {
 import { useAuthStore } from "@/store/authStore";
 import { withApiLoading } from "@/store/apiLoadingStore";
 import { localDateISO } from "@/lib/dateUtils";
+import { sortAttendanceByDateDesc } from "@/lib/attendanceSort";
 import { useT } from "@/lib/useT";
 import { EmployeeNameEmailTooltip } from "@/components/EmployeeNameEmailTooltip";
 
@@ -794,13 +795,21 @@ export default function TeamPage() {
     [q],
   );
 
-  const filteredRows = useMemo(() => rows.filter(matches), [rows, matches]);
+  const filteredRows = useMemo(
+    () => sortAttendanceByDateDesc(rows.filter(matches)),
+    [rows, matches],
+  );
 
   const grouped = useMemo(() => {
-    if (!q) return overview;
-    return overview
-      .map((g) => ({ ...g, rows: g.rows.filter(matches) }))
-      .filter((g) => g.rows.length > 0);
+    const base = !q
+      ? overview
+      : overview
+          .map((g) => ({ ...g, rows: g.rows.filter(matches) }))
+          .filter((g) => g.rows.length > 0);
+    return base.map((g) => ({
+      ...g,
+      rows: sortAttendanceByDateDesc(g.rows),
+    }));
   }, [overview, matches, q]);
 
   const allDepartmentsMode = !overviewMode && selectedDeptId === ALL_DEPARTMENTS;
@@ -1204,7 +1213,7 @@ export default function TeamPage() {
       </div>
 
       {!showGroupedView && (
-        <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+        <div className="overflow-x-auto rounded-lg border border-zinc-200 pb-10 dark:border-zinc-800">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-zinc-100 dark:bg-zinc-900">
               <tr>
@@ -1406,7 +1415,7 @@ export default function TeamPage() {
           {deptFilteredGrouped.map((g) => (
             <div
               key={g.teamId}
-              className={`overflow-x-auto rounded-lg border ${teamAccentClass(g.teamId)}`}
+              className={`overflow-x-auto rounded-lg border pb-10 ${teamAccentClass(g.teamId)}`}
             >
               <div className="flex flex-wrap items-baseline justify-between gap-2 bg-white/40 px-3 py-2 dark:bg-black/10">
                 <div className="font-medium">

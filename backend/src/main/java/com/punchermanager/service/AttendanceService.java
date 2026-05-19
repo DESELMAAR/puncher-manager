@@ -236,6 +236,9 @@ public class AttendanceService {
               scheduleOk,
               scheduleNote));
     }
+    rows.sort(
+        Comparator.comparing(AttendanceRowDto::name, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+            .thenComparing(AttendanceRowDto::employeeId, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
     return rows;
   }
 
@@ -400,7 +403,14 @@ public class AttendanceService {
                 scheduleNote));
       }
     }
+    out.sort(attendanceRowByDateDesc());
     return out;
+  }
+
+  private static Comparator<AttendanceRowDto> attendanceRowByDateDesc() {
+    return Comparator.comparing(AttendanceRowDto::recordDate, Comparator.reverseOrder())
+        .thenComparing(AttendanceRowDto::name, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+        .thenComparing(AttendanceRowDto::employeeId, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
   }
 
   private record DerivedAttendance(

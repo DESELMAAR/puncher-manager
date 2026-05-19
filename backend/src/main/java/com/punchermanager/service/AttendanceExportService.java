@@ -59,7 +59,7 @@ public class AttendanceExportService {
     rows =
         rows.stream()
             .sorted(
-                Comparator.comparing(AttendanceRowDto::recordDate)
+                Comparator.comparing(AttendanceRowDto::recordDate, Comparator.reverseOrder())
                     .thenComparing(r -> nullSafe(r.departmentName()))
                     .thenComparing(r -> nullSafe(r.teamName()))
                     .thenComparing(r -> nullSafe(r.employeeId())))

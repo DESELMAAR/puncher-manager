@@ -36,6 +36,10 @@ One public URL serves the UI and API (`/api/...` routes to Spring Boot).
    - `<user>/puncher-manager-frontend:latest`
 5. **GitHub secrets** for CI are set (`DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`).
 
+### Power BI → private RDS
+
+If you connect **Power BI Desktop** to AWS PostgreSQL via **ODBC + SSH tunnel + EC2 bastion**, see **[powerbi-rds-connection.md](./powerbi-rds-connection.md)** for a full explanation of that path.
+
 ### Automate deploy on every push to `main`
 
 See **[`cicd-explained.md`](../../cicd-explained.md)** (beginner-friendly) for the full CI/CD glossary and setup:

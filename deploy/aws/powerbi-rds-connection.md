@@ -1,129 +1,256 @@
-# Power BI → AWS RDS connection (explained)
+# How I Successfully Connected Power BI to My AWS PostgreSQL Database
 
-This document describes how **Power BI Desktop** connects to the **private PostgreSQL database** on AWS for Puncher Manager, using the path you set up successfully:
+This document describes the **Puncher Manager** project architecture, why a direct Power BI → RDS connection failed, and the **secure solution** that worked: **Power BI Desktop → ODBC → SSH tunnel → EC2 gateway → private RDS PostgreSQL**.
+
+---
+
+## Project architecture
+
+I deployed **Puncher Manager** on Amazon Web Services using:
+
+| Component | Role |
+|-----------|------|
+| **ECS Fargate** | Runs backend and frontend containers |
+| **RDS PostgreSQL** | Application database (`puncher_db`) |
+| **Terraform** | Infrastructure as code (VPC, RDS, ECS, ALB) |
+| **GitHub Actions CI/CD** | Automatic build, test, and deploy on push to `main` |
+
+The PostgreSQL database was intentionally deployed inside a **private VPC subnet** for security (`publicly_accessible = false` in Terraform).
+
+```text
+Internet
+    │
+    ▼
+Application Load Balancer
+    │
+    ├──► ECS Fargate (backend + frontend)
+    │         │
+    │         ▼
+    └──► RDS PostgreSQL (private subnet)
+```
+
+---
+
+## Problem
+
+I wanted to connect:
+
+```text
+Power BI Desktop  →  AWS PostgreSQL RDS
+```
+
+**Direct connection failed** because:
+
+- The RDS database was **private** (not on the public internet).
+- **Internet access to PostgreSQL was blocked** by design (security group only allows ECS + bastion).
+- **Power BI could not reach the database directly** from my laptop.
+
+| What I tried first | Result |
+|--------------------|--------|
+| RDS endpoint as server in Power BI | Timeout / unreachable |
+| App login (`superadmin@puncher.com`) as DB user | Wrong — that is not the database user |
+
+The database user is **`postgres`**; the password is **`db_password`** from `deploy/aws/terraform/terraform.tfvars`.
+
+---
+
+## Final professional solution
+
+Instead of exposing the database publicly, I implemented a secure architecture using an **EC2 gateway** and **SSH tunneling**.
+
+### Architecture (what worked)
 
 ```text
 Power BI Desktop
-       ↓
-     ODBC
-       ↓
-  SSH Tunnel
-       ↓
-  EC2 Gateway (bastion)
-       ↓
-Private AWS RDS PostgreSQL
+        ↓
+   ODBC Driver
+        ↓
+   SSH Tunnel
+        ↓
+  EC2 Gateway (public)
+        ↓
+Private RDS PostgreSQL
+```
+
+```mermaid
+flowchart TB
+  subgraph pc [My PC - Windows]
+    PBI[Power BI Desktop]
+    ODBC[ODBC DSN: PuncherAWS]
+    Local["localhost:5433"]
+    PBI --> ODBC --> Local
+  end
+
+  subgraph tunnel [SSH tunnel - encrypted]
+    SSH[ssh -L 5433:rds:5432]
+  end
+
+  subgraph aws [AWS VPC - eu-west-1]
+    EC2[EC2 gateway\nt3.micro\n3.249.43.245]
+    RDS[(RDS PostgreSQL\npuncher_db\nprivate)]
+    ECS[ECS Fargate app]
+  end
+
+  Local --> SSH --> EC2
+  EC2 -->|port 5432| RDS
+  ECS --> RDS
 ```
 
 ---
 
-## Why this chain exists
+## Step-by-step process
 
-Your RDS instance is **not on the public internet**. Terraform creates it with:
+### 1. Create an EC2 gateway
 
-- `publicly_accessible = false`
-- Database subnets in the **private** part of the VPC
-- Security group `puncher-manager-rds` that only allows PostgreSQL (**5432**) from the **ECS** security group (the running app)
+I created a small EC2 instance inside the **same VPC** as the RDS database.
 
-So your laptop cannot connect to RDS directly. Something inside the VPC must relay the connection. The **EC2 gateway** (bastion) plays that role; the **SSH tunnel** carries traffic from your PC to that gateway and through to RDS.
+| Setting | Value |
+|---------|--------|
+| AMI | Amazon Linux 2023 |
+| Instance type | t3.micro |
+| Public IP | Enabled |
+| VPC | Same as RDS (`puncher-manager-vpc`) |
+| Subnet | Public subnet in that VPC |
+
+**Purpose:** act as a secure **bridge** between my laptop and the private database (bastion / jump host).
 
 ---
 
-## Layer-by-layer
+### 2. Create SSH key pair
 
-### 1. Power BI Desktop
+During EC2 creation:
 
-- You build reports and connect to data sources here.
-- For PostgreSQL, you use **Get data** and load tables (often **Import** mode).
-- Power BI does not talk to AWS networks by itself; it only opens a connection to what you configure on your machine (usually `localhost` when using a tunnel).
+- I generated a **`.pem` key pair** (`puncher-powerbi-gateway2-keypair.pem`).
+- I **downloaded** the private key file and kept it secure on my PC.
+- I used it later for SSH access to the gateway.
 
-### 2. ODBC
+---
 
-- **ODBC** (Open Database Connectivity) is a standard Windows API for databases.
-- Power BI can use an ODBC driver for PostgreSQL (or the built-in PostgreSQL connector, which uses similar settings).
-- On your PC, ODBC is configured to connect to:
-  - **Host:** `localhost` (or `127.0.0.1`)
-  - **Port:** `5432` (local end of the tunnel)
-  - **Database:** `puncher_db`
-  - **User:** `postgres`
-  - **Password:** the RDS master password from `deploy/aws/terraform/terraform.tfvars` (`db_password`)
+### 3. Configure security groups
 
-So from Power BI’s point of view, the database “lives” on your computer at port 5432. The tunnel makes that true.
+#### EC2 security group
 
-### 3. SSH tunnel
+| Rule | Purpose |
+|------|---------|
+| **SSH port 22** | Only from **my public IP** |
 
-- An **SSH tunnel** (port forwarding) maps a port on your laptop to a remote host and port reachable from the EC2 instance.
-- Typical command shape:
+So only I can open an SSH session to the gateway.
 
-```bash
-ssh -i your-key.pem -L 5432:RDS_ENDPOINT:5432 ec2-user@EC2_PUBLIC_IP
+#### RDS security group (`puncher-manager-rds`)
+
+| Rule | Purpose |
+|------|---------|
+| **PostgreSQL port 5432** | Only from the **EC2 security group** (not from `0.0.0.0/0`) |
+
+Terraform originally allows **5432 only from ECS**. I **added** an inbound rule so the bastion security group can also reach RDS.
+
+This kept the database **private and secure** — not exposed to the whole internet.
+
+---
+
+### 4. Create SSH tunnel
+
+Using **PowerShell** on Windows (leave this window **open** while using Power BI):
+
+```powershell
+ssh -i "C:\Users\deselmaar\Downloads\puncher-powerbi-gateway2-keypair.pem" `
+  -L 5433:puncher-manager-postgres.cje2qymy83zz.eu-west-1.rds.amazonaws.com:5432 `
+  ec2-user@3.249.43.245
 ```
 
-- **`-L 5432:RDS_ENDPOINT:5432`** means:
-  - Listen on **your PC** port `5432`
-  - Forward traffic through SSH to **RDS** port `5432` (as seen from the EC2 host)
-- The SSH session must stay **open** while you use Power BI.
+| Part | Meaning |
+|------|---------|
+| `-L 5433:...:5432` | On my PC, port **5433** forwards to RDS port **5432** |
+| `puncher-manager-postgres....rds.amazonaws.com` | Private RDS endpoint |
+| `ec2-user@3.249.43.245` | EC2 gateway public IP |
+| `.pem` file | SSH private key |
 
-### 4. EC2 gateway (bastion)
-
-- A small **EC2** virtual machine in the **same VPC** as RDS (e.g. Amazon Linux in a public subnet).
-- It has a **public IP** so your PC can SSH to it.
-- Its security group allows **outbound** traffic to RDS.
-- RDS security group has an **inbound** rule: PostgreSQL **5432** from the **bastion security group** (not from the whole internet).
-
-The gateway is only a **jump host** — it does not store your data; it forwards encrypted traffic.
-
-### 5. Private AWS RDS PostgreSQL
-
-- **Amazon RDS** runs PostgreSQL 16 for Puncher Manager.
-- **Endpoint** (example): `puncher-manager-postgres.xxxxx.eu-west-1.rds.amazonaws.com`
-- **Database name:** `puncher_db` (from Terraform `db_name`)
-- **Master user:** `postgres` (from Terraform `db_username`)
-- Only trusted sources in the VPC (ECS app + bastion) may connect on 5432.
-
----
-
-## End-to-end flow (one query)
+**Resulting path:**
 
 ```text
-┌─────────────────┐
-│ Power BI Desktop│  "Connect to localhost:5432"
-└────────┬────────┘
-         │ ODBC / PostgreSQL driver
-         ▼
-┌─────────────────┐
-│  Your PC        │  localhost:5432  ◄── tunnel entry
-│  (Windows)      │
-└────────┬────────┘
-         │ SSH encrypted tunnel (-L 5432:...)
-         ▼
-┌─────────────────┐
-│  EC2 gateway    │  Same VPC, public subnet
-│  (bastion)      │
-└────────┬────────┘
-         │ TCP 5432 (private VPC)
-         ▼
-┌─────────────────┐
-│  RDS PostgreSQL │  puncher_db (private)
-│  (private)      │
-└─────────────────┘
+localhost:5433  →  (SSH encrypted)  →  EC2  →  RDS:5432
 ```
+
+I used local port **5433** (not 5432) to avoid conflict with other services on my machine.
+
+---
+
+### 5. Verify tunnel
+
+Using PowerShell:
+
+```powershell
+Test-NetConnection localhost -Port 5433
+```
+
+**Result:**
+
+```text
+TcpTestSucceeded : True
+```
+
+Meaning: the **SSH tunnel worked** before opening Power BI.
+
+---
+
+### 6. Install PostgreSQL ODBC driver
+
+The native **Power BI PostgreSQL connector** caused **SSL certificate validation** problems when pointed at `localhost` through the tunnel.
+
+**Solution:** install **PostgreSQL ODBC Driver (64-bit)** (psqlODBC / Npgsql-based driver for Windows).
+
+Download from PostgreSQL or a trusted ODBC driver package for Windows x64.
+
+---
+
+### 7. Configure ODBC data source
+
+Open **ODBC Data Sources (64-bit)** (Windows) and create a **User DSN** named **`PuncherAWS`**:
+
+| Setting | Value |
+|---------|--------|
+| **Server** | `localhost` |
+| **Port** | `5433` |
+| **Database** | `puncher_db` |
+| **Username** | `postgres` |
+| **Password** | From `terraform.tfvars` → `db_password` |
+| **SSL Mode** | `require` (if the driver exposes it) |
+
+Power BI connects to the DSN; the DSN connects through the tunnel to RDS.
+
+---
+
+### 8. Connect Power BI
+
+In **Power BI Desktop**:
+
+1. **Home** → **Get data** → **More…**
+2. Search **ODBC**
+3. Select DSN **`PuncherAWS`**
+4. Choose **Import** (recommended for first reports)
+5. Select tables (e.g. `users`, `punches`, `attendance_records`, `teams`, `departments`)
+6. **Load**
+
+Power BI successfully loaded the PostgreSQL tables from **AWS RDS**.
 
 ---
 
 ## Connection settings reference
 
-| Setting | Typical value |
-|---------|----------------|
-| Power BI server | `localhost` |
-| Port | `5432` |
-| Database | `puncher_db` |
-| Username | `postgres` |
-| Password | `db_password` from `terraform.tfvars` |
-| RDS endpoint (tunnel target) | `terraform output rds_endpoint` |
-| EC2 host (SSH) | Bastion public IP or DNS |
-| AWS region | `eu-west-1` (or your `aws_region`) |
+| Layer | Setting | Value |
+|-------|---------|--------|
+| Power BI | Data source | ODBC → `PuncherAWS` |
+| ODBC | Server | `localhost` |
+| ODBC | Port | `5433` |
+| ODBC | Database | `puncher_db` |
+| ODBC | User | `postgres` |
+| ODBC | Password | `db_password` in `terraform.tfvars` |
+| SSH tunnel | Local port | `5433` |
+| SSH tunnel | Remote | RDS endpoint `:5432` |
+| SSH tunnel | Gateway | `ec2-user@<EC2_PUBLIC_IP>` |
+| RDS | Endpoint | `terraform output rds_endpoint` |
 
-Get RDS endpoint from project root:
+Get RDS endpoint:
 
 ```powershell
 cd deploy\aws\terraform
@@ -132,55 +259,119 @@ terraform output rds_endpoint
 
 ---
 
-## Security notes
+## Key technical concepts learned
 
-| Good practice | Why |
-|---------------|-----|
-| RDS stays **private** | Database not exposed to `0.0.0.0/0` |
-| Bastion SG allows **SSH only from your IP** | Limits who can open a tunnel |
-| RDS allows **5432 only from bastion SG** | Not from the whole internet |
-| Use a **strong** `db_password` | Master DB credential |
-| Do **not** commit `terraform.tfvars` | Contains secrets |
-| Close SSH tunnel when done | Closes access from your PC |
+### AWS services
+
+| Service | What I learned |
+|---------|----------------|
+| **ECS Fargate** | Runs containers without managing servers |
+| **RDS PostgreSQL** | Managed database in a private subnet |
+| **EC2** | Gateway / bastion for secure access |
+| **VPC** | Isolated network; public vs private subnets |
+| **Security groups** | Firewall rules per resource (ECS → RDS, bastion → RDS) |
+
+### DevOps
+
+| Topic | What I learned |
+|-------|----------------|
+| **Terraform** | Infrastructure as code for repeatable AWS setup |
+| **CI/CD** | GitHub Actions builds images and deploys to ECS |
+| **Private RDS** | Safer than public DB; requires a controlled access path |
+
+### Networking
+
+| Topic | What I learned |
+|-------|----------------|
+| **Private subnets** | RDS not reachable from the internet |
+| **SSH tunneling** | Encrypted port forwarding from laptop → VPC |
+| **Bastion / gateway** | Jump host pattern used in production |
+| **Secure database access** | No need to make RDS public for analytics |
+
+### Data analytics
+
+| Topic | What I learned |
+|-------|----------------|
+| **Power BI** | Reports and dashboards on live data |
+| **ODBC** | Reliable driver path when native connector has SSL issues |
+| **PostgreSQL integration** | Star schema: facts (`punches`, `attendance_records`) + dimensions (`users`, `teams`) |
 
 ---
 
-## ODBC vs built-in PostgreSQL connector
+## Security advantages
 
-Both can work with the same tunnel:
+This solution is secure because:
 
-| Approach | Notes |
-|----------|--------|
-| **PostgreSQL database** (Power BI native) | Simplest; server = `localhost` |
-| **ODBC** | Uses a DSN or connection string; same host/port/user/password |
+| Point | Why it matters |
+|-------|----------------|
+| PostgreSQL remains **private** | No public RDS endpoint for the world |
+| Database is **not** exposed on `0.0.0.0/0` | Only VPC-internal + controlled bastion |
+| Only the **EC2 gateway** can access RDS on 5432 | RDS SG allows bastion SG, not the internet |
+| Power BI uses **encrypted SSH tunneling** | Traffic protected in transit |
+| SSH limited to **my IP** on port 22 | Reduces who can open a tunnel |
 
-Your stack uses **ODBC** on top of the same tunnel — the important part is still **localhost:5432** pointing at the SSH forward.
+This architecture is close to **real production cloud environments** (bastion + private database).
+
+---
+
+## Daily workflow
+
+1. Start the **SSH tunnel** (PowerShell — keep window open).
+2. Optional: `Test-NetConnection localhost -Port 5433`.
+3. Open **Power BI Desktop** → connect via **ODBC** → `PuncherAWS`.
+4. Refresh or build reports.
+5. Close Power BI and stop SSH when finished.
 
 ---
 
 ## Troubleshooting
 
-| Problem | Likely cause |
-|---------|----------------|
-| Timeout connecting to `localhost` | SSH tunnel not running or wrong local port |
-| Timeout to RDS endpoint from PC | Normal — use tunnel, not direct RDS host in Power BI |
-| Password authentication failed | Wrong `db_password`; not app login email |
-| Tunnel drops | SSH session closed; restart tunnel |
-| Works once, then fails | VPN/IP change; check bastion SSH rule |
+| Problem | Likely cause | Fix |
+|---------|----------------|-----|
+| `TcpTestSucceeded : False` | Tunnel not running | Start SSH command again |
+| Power BI timeout | Tunnel closed or wrong port | Use `5433` everywhere (ODBC + tunnel) |
+| Password failed | Wrong password | Use `db_password` from `terraform.tfvars`, not app login |
+| Native PostgreSQL connector SSL error | Certificate on localhost path | Use **ODBC** as in this guide |
+| Port 5432 in use on PC | Another Postgres/local service | Use **5433** for local tunnel port |
+| RDS still unreachable from PC | Connecting to RDS hostname in Power BI | Use **`localhost`** and the tunnel only |
 
 ---
 
-## Related project docs
+## How this relates to the live application
+
+| Path | Purpose |
+|------|---------|
+| **Users → ALB → ECS → RDS** | Production Puncher Manager (CI/CD deploy) |
+| **Power BI → ODBC → SSH → EC2 → RDS** | Analytics and reporting |
+
+Both use the **same RDS database**; only the **network path** differs.
+
+---
+
+## Related project files
 
 | File | Topic |
 |------|--------|
 | [README.md](./README.md) | AWS deploy overview |
-| [terraform/](./terraform/) | VPC, RDS, ECS (private RDS) |
-| [../accessDB04.md](../../accessDB04.md) | Local Docker Postgres access |
-| [../../cicd-explained.md](../../cicd-explained.md) | CI/CD to AWS |
+| [terraform/](./terraform/) | VPC, RDS, ECS |
+| [../../cicd-explained.md](../../cicd-explained.md) | GitHub Actions CI/CD |
+| [../../dbtables.md](../../dbtables.md) | Database tables for Power BI model |
+| [../../accessDB04.md](../../accessDB04.md) | Local Docker Postgres (alternative) |
 
 ---
 
 ## Summary
 
-Power BI thinks it connects to a local PostgreSQL server. **ODBC** sends that traffic to **localhost:5432**. The **SSH tunnel** forwards it to the **EC2 gateway**, which forwards to **private RDS** inside the VPC. That is the correct and secure way to analyze live Puncher Manager data in Power BI without making RDS public on the internet.
+| Step | Outcome |
+|------|---------|
+| Deploy app on **ECS + private RDS** | Secure production architecture |
+| Direct Power BI → RDS | **Failed** (private DB) |
+| **EC2 gateway + security groups + SSH tunnel** | Secure bridge into VPC |
+| **ODBC on `localhost:5433`** | **Success** — tables loaded in Power BI |
+
+```text
+Power BI Desktop  →  ODBC (PuncherAWS)  →  localhost:5433
+    →  SSH tunnel  →  EC2 gateway  →  Private RDS PostgreSQL (puncher_db)
+```
+
+This is the documented, professional way I connected **Power BI** to my **AWS PostgreSQL** database without exposing RDS to the public internet.

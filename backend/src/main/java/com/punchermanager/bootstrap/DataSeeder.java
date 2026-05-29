@@ -11,6 +11,7 @@ import com.punchermanager.domain.UserRole;
 import com.punchermanager.domain.UserStatus;
 import com.punchermanager.domain.WeeklySchedule;
 import com.punchermanager.domain.WeeklyScheduleDay;
+import com.punchermanager.repository.AttendanceRecordRepository;
 import com.punchermanager.repository.DepartmentRepository;
 import com.punchermanager.repository.PunchRepository;
 import com.punchermanager.repository.ScheduleConfirmationRepository;
@@ -33,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,12 +46,25 @@ public class DataSeeder implements ApplicationRunner {
   private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
   private static final String DEMO_PW = "demo123";
 
+  /**
+   * Safety switch: seeding is opt-in. Enable with:
+   * - env: PUNCHER_SEED_ENABLED=true
+   * - or property: puncher.seed.enabled=true
+   */
+  @Value("${puncher.seed.enabled:false}")
+  private boolean seedEnabled;
+
+  /** If true, we generate/update {@code attendance_records} from seeded punches. */
+  @Value("${puncher.seed.generateAttendanceRecords:true}")
+  private boolean generateAttendanceRecords;
+
   private final UserRepository userRepository;
   private final DepartmentRepository departmentRepository;
   private final TeamRepository teamRepository;
   private final PunchRepository punchRepository;
   private final WeeklyScheduleRepository weeklyScheduleRepository;
   private final ScheduleConfirmationRepository scheduleConfirmationRepository;
+  private final AttendanceRecordRepository attendanceRecordRepository;
   private final AttendanceService attendanceService;
   private final PasswordEncoder passwordEncoder;
 
@@ -60,6 +75,7 @@ public class DataSeeder implements ApplicationRunner {
       PunchRepository punchRepository,
       WeeklyScheduleRepository weeklyScheduleRepository,
       ScheduleConfirmationRepository scheduleConfirmationRepository,
+      AttendanceRecordRepository attendanceRecordRepository,
       AttendanceService attendanceService,
       PasswordEncoder passwordEncoder) {
     this.userRepository = userRepository;
@@ -68,6 +84,7 @@ public class DataSeeder implements ApplicationRunner {
     this.punchRepository = punchRepository;
     this.weeklyScheduleRepository = weeklyScheduleRepository;
     this.scheduleConfirmationRepository = scheduleConfirmationRepository;
+    this.attendanceRecordRepository = attendanceRecordRepository;
     this.attendanceService = attendanceService;
     this.passwordEncoder = passwordEncoder;
   }
@@ -75,6 +92,10 @@ public class DataSeeder implements ApplicationRunner {
   @Override
   @Transactional
   public void run(ApplicationArguments args) {
+    if (!seedEnabled) {
+      log.info("DataSeeder: disabled (set puncher.seed.enabled=true to run)");
+      return;
+    }
     if (userRepository.findByEmail("superadmin@puncher.com").isEmpty()) {
       seedCoreOrganization();
     }
@@ -440,6 +461,13 @@ public class DataSeeder implements ApplicationRunner {
           continue;
         }
 
+        if (generateAttendanceRecords
+            && u.getRole() == UserRole.EMPLOYEE
+            && attendanceRecordRepository.findByUserIdAndRecordDate(u.getId(), day).isPresent()) {
+          // Already evaluated for this user/day.
+          continue;
+        }
+
         Instant from = day.atStartOfDay(zone).toInstant();
         Instant to = day.plusDays(1).atStartOfDay(zone).toInstant();
         if (punchRepository
@@ -494,6 +522,11 @@ public class DataSeeder implements ApplicationRunner {
         savePunch(u, day.atTime(break2Start).atZone(zone).toInstant(), PunchType.BREAK2_START);
         savePunch(u, day.atTime(break2End).atZone(zone).toInstant(), PunchType.BREAK2_END);
         savePunch(u, day.atTime(logout).atZone(zone).toInstant(), PunchType.LOGOUT);
+
+        // For analytics (Power BI): persist daily summary into attendance_records too.
+        if (generateAttendanceRecords && u.getRole() == UserRole.EMPLOYEE) {
+          attendanceService.evaluateAfterLogout(u, day);
+        }
         seeded++;
       }
     }

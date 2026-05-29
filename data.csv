@@ -1,0 +1,8 @@
+﻿employee_id,name,status,Sum of minutes_late,name
+STUDY-ON-02,Polaris Patrol,ON_TIME,0,Alex Kim (on time)
+STUDY-GRACE-01,Quantum Quorum,ON_TIME,0,Avery Park (within grace)
+STUDY-ON-03,Quantum Quorum,ON_TIME,0,Jamie Chen (on time)
+STUDY-ON-01,Nebula Nine,ON_TIME,0,Jordan Lee (on time)
+STUDY-LATE-03,Quantum Quorum,LATE,52,River Santos (very late)
+STUDY-LATE-01,Nebula Nine,LATE,25,Sam Rivera (late start)
+STUDY-LATE-02,Polaris Patrol,LATE,18,Taylor Brooks (late start)

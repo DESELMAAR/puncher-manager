@@ -38,6 +38,7 @@ com\punchermanager\service\DepartmentService$1.class
 com\punchermanager\repository\DepartmentRepository.class
 com\punchermanager\domain\ScheduleConfirmation.class
 com\punchermanager\web\dto\NotificationDto.class
+com\punchermanager\bootstrap\DataSeeder$1TeamSpec.class
 com\punchermanager\web\dto\DepartmentDurationsRequest.class
 com\punchermanager\web\dto\PunchResponse.class
 com\punchermanager\service\NotificationService$1.class
@@ -66,6 +67,7 @@ com\punchermanager\service\SseNotificationBroadcaster.class
 com\punchermanager\web\dto\CompanySettingsUpsertRequest.class
 com\punchermanager\service\TeamService$1.class
 com\punchermanager\domain\UserStatus.class
+com\punchermanager\bootstrap\DataSeeder$1DeptSpec.class
 com\punchermanager\repository\PunchRepository.class
 com\punchermanager\bootstrap\DataSeeder$1StudyTeamSpec.class
 com\punchermanager\service\AttendanceService.class
@@ -78,6 +80,7 @@ com\punchermanager\service\AttendanceService$Bucket.class
 com\punchermanager\service\AttendanceService$1.class
 com\punchermanager\web\controller\TeamController.class
 com\punchermanager\web\dto\AttendanceAnalyticsResponseDto.class
+com\punchermanager\bootstrap\DataSeeder$1EmployeeSpec.class
 com\punchermanager\domain\Department.class
 com\punchermanager\domain\AttendanceRecord.class
 com\punchermanager\web\controller\UserController.class

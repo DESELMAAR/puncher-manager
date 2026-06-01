@@ -62,3 +62,10 @@ logging:
   level:
     com.punchermanager: INFO
     org.springframework.security: INFO
+
+# Demo / analytics seeding (off by default). Enable with env PUNCHER_SEED_ENABLED=true
+puncher:
+  seed:
+    enabled: false
+    generateAttendanceRecords: true
+    analytics: true

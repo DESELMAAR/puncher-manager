@@ -37,7 +37,8 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Component
 @Profile("!test")
@@ -58,6 +59,16 @@ public class DataSeeder implements ApplicationRunner {
   @Value("${puncher.seed.generateAttendanceRecords:true}")
   private boolean generateAttendanceRecords;
 
+  /**
+   * If true, seed extra departments/teams/employees prefixed with {@code ANALYTICS-} for Power BI
+   * (Human Resources, Operations, Sales & Marketing).
+   */
+  @Value("${puncher.seed.analytics:true}")
+  private boolean seedAnalytics;
+
+  @Value("${spring.datasource.url:unknown}")
+  private String datasourceUrl;
+
   private final UserRepository userRepository;
   private final DepartmentRepository departmentRepository;
   private final TeamRepository teamRepository;
@@ -67,6 +78,7 @@ public class DataSeeder implements ApplicationRunner {
   private final AttendanceRecordRepository attendanceRecordRepository;
   private final AttendanceService attendanceService;
   private final PasswordEncoder passwordEncoder;
+  private final TransactionTemplate transactionTemplate;
 
   public DataSeeder(
       UserRepository userRepository,
@@ -77,7 +89,8 @@ public class DataSeeder implements ApplicationRunner {
       ScheduleConfirmationRepository scheduleConfirmationRepository,
       AttendanceRecordRepository attendanceRecordRepository,
       AttendanceService attendanceService,
-      PasswordEncoder passwordEncoder) {
+      PasswordEncoder passwordEncoder,
+      PlatformTransactionManager transactionManager) {
     this.userRepository = userRepository;
     this.departmentRepository = departmentRepository;
     this.teamRepository = teamRepository;
@@ -87,22 +100,29 @@ public class DataSeeder implements ApplicationRunner {
     this.attendanceRecordRepository = attendanceRecordRepository;
     this.attendanceService = attendanceService;
     this.passwordEncoder = passwordEncoder;
+    this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
   @Override
-  @Transactional
   public void run(ApplicationArguments args) {
     if (!seedEnabled) {
       log.info("DataSeeder: disabled (set puncher.seed.enabled=true to run)");
       return;
     }
+    log.info("DataSeeder: using datasource {}", datasourceUrl);
     if (userRepository.findByEmail("superadmin@puncher.com").isEmpty()) {
-      seedCoreOrganization();
+      transactionTemplate.executeWithoutResult(status -> seedCoreOrganization());
     }
     if (!userRepository.existsByEmployeeId("STUDY-ON-01")) {
-      seedFictionalStudyAttendance();
+      transactionTemplate.executeWithoutResult(status -> seedFictionalStudyAttendance());
     }
-    seedFuturePunchesForKnownEmployees();
+    if (seedAnalytics && !userRepository.existsByEmployeeId("ANALYTICS-DM-HR")) {
+      transactionTemplate.executeWithoutResult(status -> seedAnalyticsOrganization());
+    } else if (seedAnalytics) {
+      log.info("DataSeeder: analytics org already present (ANALYTICS-DM-HR exists)");
+    }
+    transactionTemplate.executeWithoutResult(status -> seedFuturePunchesForKnownEmployees());
+    log.info("DataSeeder: finished");
   }
 
   /** Original demo org: Super Admin, Engineering, Alpha Squad, one employee. */
@@ -321,6 +341,204 @@ public class DataSeeder implements ApplicationRunner {
     return x;
   }
 
+  /**
+   * Extra org structure for Power BI: 3 departments, 2 teams each, 4 employees per team (~24
+   * employees). All synthetic IDs/emails use the {@code ANALYTICS-} prefix / {@code @analytics.demo}
+   * domain. Idempotent via marker {@code ANALYTICS-DM-HR}.
+   */
+  private void seedAnalyticsOrganization() {
+    User scheduleAuthor =
+        userRepository
+            .findByEmail("superadmin@puncher.com")
+            .orElseGet(
+                () ->
+                    userRepository.findAll().stream()
+                        .filter(x -> x.getRole() == UserRole.SUPER_ADMIN)
+                        .findFirst()
+                        .orElseThrow(
+                            () ->
+                                new IllegalStateException(
+                                    "Super Admin required to seed analytics schedules")));
+
+    log.info("Seeding analytics org (departments, teams, employees) for Power BI");
+
+    record EmployeeSpec(String name, String emailSuffix, String empSuffix) {}
+
+    record TeamSpec(
+        String teamName,
+        String tlName,
+        String tlEmail,
+        String tlEmpId,
+        EmployeeSpec[] employees) {}
+
+    record DeptSpec(
+        String name,
+        String description,
+        int lateGraceMinutes,
+        String dmName,
+        String dmEmail,
+        String dmEmpId,
+        TeamSpec[] teams) {}
+
+    DeptSpec[] departments =
+        new DeptSpec[] {
+          new DeptSpec(
+              "Human Resources",
+              "People operations and hiring (analytics demo)",
+              10,
+              "Hannah Reed",
+              "hannah.reed@analytics.demo",
+              "ANALYTICS-DM-HR",
+              new TeamSpec[] {
+                new TeamSpec(
+                    "Talent Forge",
+                    "Leo Martinez",
+                    "leo.talent@analytics.demo",
+                    "ANALYTICS-TL-HR-01",
+                    new EmployeeSpec[] {
+                      new EmployeeSpec("Nina OnTime", "nina.ontime.hr1@analytics.demo", "ANALYTICS-HR1-01"),
+                      new EmployeeSpec("Omar Grace", "omar.grace.hr1@analytics.demo", "ANALYTICS-HR1-02"),
+                      new EmployeeSpec("Paula Late", "paula.late.hr1@analytics.demo", "ANALYTICS-HR1-03"),
+                      new EmployeeSpec("Quinn VeryLate", "quinn.verylate.hr1@analytics.demo", "ANALYTICS-HR1-04")
+                    }),
+                new TeamSpec(
+                    "People Pulse",
+                    "Ivy Chen",
+                    "ivy.pulse@analytics.demo",
+                    "ANALYTICS-TL-HR-02",
+                    new EmployeeSpec[] {
+                      new EmployeeSpec("Rita OnTime", "rita.ontime.hr2@analytics.demo", "ANALYTICS-HR2-01"),
+                      new EmployeeSpec("Sam Grace", "sam.grace.hr2@analytics.demo", "ANALYTICS-HR2-02"),
+                      new EmployeeSpec("Tara Late", "tara.late.hr2@analytics.demo", "ANALYTICS-HR2-03"),
+                      new EmployeeSpec("Uma VeryLate", "uma.verylate.hr2@analytics.demo", "ANALYTICS-HR2-04")
+                    })
+              }),
+          new DeptSpec(
+              "Operations",
+              "Facilities and logistics (analytics demo)",
+              15,
+              "Victor Hale",
+              "victor.hale@analytics.demo",
+              "ANALYTICS-DM-OPS",
+              new TeamSpec[] {
+                new TeamSpec(
+                    "Logistics Lane",
+                    "Wendy Brooks",
+                    "wendy.logistics@analytics.demo",
+                    "ANALYTICS-TL-OPS-01",
+                    new EmployeeSpec[] {
+                      new EmployeeSpec("Xander OnTime", "xander.ontime.ops1@analytics.demo", "ANALYTICS-OPS1-01"),
+                      new EmployeeSpec("Yara Grace", "yara.grace.ops1@analytics.demo", "ANALYTICS-OPS1-02"),
+                      new EmployeeSpec("Zane Late", "zane.late.ops1@analytics.demo", "ANALYTICS-OPS1-03"),
+                      new EmployeeSpec("Abby VeryLate", "abby.verylate.ops1@analytics.demo", "ANALYTICS-OPS1-04")
+                    }),
+                new TeamSpec(
+                    "Field Response",
+                    "Blake Ortiz",
+                    "blake.field@analytics.demo",
+                    "ANALYTICS-TL-OPS-02",
+                    new EmployeeSpec[] {
+                      new EmployeeSpec("Cora OnTime", "cora.ontime.ops2@analytics.demo", "ANALYTICS-OPS2-01"),
+                      new EmployeeSpec("Derek Grace", "derek.grace.ops2@analytics.demo", "ANALYTICS-OPS2-02"),
+                      new EmployeeSpec("Elena Late", "elena.late.ops2@analytics.demo", "ANALYTICS-OPS2-03"),
+                      new EmployeeSpec("Finn VeryLate", "finn.verylate.ops2@analytics.demo", "ANALYTICS-OPS2-04")
+                    })
+              }),
+          new DeptSpec(
+              "Sales & Marketing",
+              "Revenue and campaigns (analytics demo)",
+              5,
+              "Gina Porter",
+              "gina.porter@analytics.demo",
+              "ANALYTICS-DM-SALES",
+              new TeamSpec[] {
+                new TeamSpec(
+                    "Growth Grid",
+                    "Henry Vega",
+                    "henry.growth@analytics.demo",
+                    "ANALYTICS-TL-SALES-01",
+                    new EmployeeSpec[] {
+                      new EmployeeSpec("Isla OnTime", "isla.ontime.sales1@analytics.demo", "ANALYTICS-SALES1-01"),
+                      new EmployeeSpec("Jake Grace", "jake.grace.sales1@analytics.demo", "ANALYTICS-SALES1-02"),
+                      new EmployeeSpec("Kira Late", "kira.late.sales1@analytics.demo", "ANALYTICS-SALES1-03"),
+                      new EmployeeSpec("Liam VeryLate", "liam.verylate.sales1@analytics.demo", "ANALYTICS-SALES1-04")
+                    }),
+                new TeamSpec(
+                    "Brand Beacon",
+                    "Mia Nguyen",
+                    "mia.brand@analytics.demo",
+                    "ANALYTICS-TL-SALES-02",
+                    new EmployeeSpec[] {
+                      new EmployeeSpec("Noah OnTime", "noah.ontime.sales2@analytics.demo", "ANALYTICS-SALES2-01"),
+                      new EmployeeSpec("Olivia Grace", "olivia.grace.sales2@analytics.demo", "ANALYTICS-SALES2-02"),
+                      new EmployeeSpec("Pete Late", "pete.late.sales2@analytics.demo", "ANALYTICS-SALES2-03"),
+                      new EmployeeSpec("Quinn VeryLate", "quinn.verylate.sales2@analytics.demo", "ANALYTICS-SALES2-04")
+                    })
+              })
+        };
+
+    int employeeCount = 0;
+    for (DeptSpec deptSpec : departments) {
+      User deptManager = managerUser(deptSpec.dmName(), deptSpec.dmEmail(), deptSpec.dmEmpId(), UserRole.DEPT_MANAGER);
+
+      Department dept = new Department();
+      dept.setName(deptSpec.name());
+      dept.setDescription(deptSpec.description());
+      dept.setLateGraceMinutes(deptSpec.lateGraceMinutes());
+      dept.setAllowedLunchMinutes(30);
+      dept.setAllowedBreaksMinutes(30);
+      dept.setBusinessFirstStartHour(8);
+      dept.setBusinessLastStartHour(10);
+      dept.setAdmin(deptManager);
+      departmentRepository.save(dept);
+
+      deptManager.setDepartment(dept);
+      userRepository.save(deptManager);
+
+      for (TeamSpec teamSpec : deptSpec.teams()) {
+        User leader =
+            managerUser(teamSpec.tlName(), teamSpec.tlEmail(), teamSpec.tlEmpId(), UserRole.TEAM_LEADER);
+        leader.setDepartment(dept);
+        userRepository.save(leader);
+
+        Team team = new Team();
+        team.setName(teamSpec.teamName());
+        team.setDepartment(dept);
+        team.setTeamLeader(leader);
+        teamRepository.save(team);
+
+        leader.setTeam(team);
+        userRepository.save(leader);
+
+        for (EmployeeSpec empSpec : teamSpec.employees()) {
+          employee(dept, team, empSpec.name(), empSpec.emailSuffix(), empSpec.empSuffix());
+          employeeCount++;
+        }
+      }
+    }
+
+    log.info(
+        "Analytics org seeded: 3 departments, 6 teams, {} employees (@analytics.demo / password {})",
+        employeeCount,
+        DEMO_PW);
+    log.info(
+        "Power BI filters: departments Human Resources, Operations, Sales & Marketing; employee_id LIKE 'ANALYTICS-%'");
+    log.info("DataSeeder: analytics org committed to database");
+  }
+
+  private User managerUser(String name, String email, String empId, UserRole role) {
+    User u = new User();
+    u.setName(name);
+    u.setEmail(email);
+    u.setPassword(passwordEncoder.encode(DEMO_PW));
+    u.setEmployeeId(empId);
+    u.setPhoneNumber("+19005550100");
+    u.setHiringDate(LocalDate.of(2021, 1, 15));
+    u.setStatus(UserStatus.ACTIVE);
+    u.setRole(role);
+    return userRepository.save(u);
+  }
+
   private User employee(Department dept, Team team, String name, String email, String empId) {
     User u = new User();
     u.setName(name);
@@ -400,8 +618,7 @@ public class DataSeeder implements ApplicationRunner {
    * behavior. Idempotent: if a day already has WORK_START, we skip that day.
    */
   private void seedFuturePunchesForKnownEmployees() {
-    // Employee IDs provided by user (Directory list)
-    List<String> empIds =
+    List<String> empIds = new java.util.ArrayList<>(
         List.of(
             "EMP001",
             "demo123",
@@ -419,7 +636,14 @@ public class DataSeeder implements ApplicationRunner {
             "elmaarpro756",
             "employee8",
             "rimemp12",
-            "STUDY-ON-03");
+            "STUDY-ON-03"));
+
+    userRepository.findAll().stream()
+        .filter(u -> u.getRole() == UserRole.EMPLOYEE)
+        .map(User::getEmployeeId)
+        .filter(id -> id != null && id.startsWith("ANALYTICS-"))
+        .filter(id -> !empIds.contains(id))
+        .forEach(empIds::add);
 
     ZoneId zone = ZoneId.systemDefault();
     // Seed the last ~2 months plus a few weeks in the future.

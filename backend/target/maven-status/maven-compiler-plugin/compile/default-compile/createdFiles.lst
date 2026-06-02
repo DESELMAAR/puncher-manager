@@ -1,3 +1,4 @@
+com\punchermanager\domain\AttendanceRiskAlert.class
 com\punchermanager\web\dto\AttendanceAnalyticsPointDto.class
 com\punchermanager\service\PunchService.class
 com\punchermanager\PuncherManagerApplication.class
@@ -16,6 +17,7 @@ com\punchermanager\domain\WeeklyScheduleDay.class
 com\punchermanager\service\TeamMembershipService.class
 com\punchermanager\web\security\SecurityConfig.class
 com\punchermanager\service\JwtService.class
+com\punchermanager\schedule\AttendanceRiskScheduler.class
 com\punchermanager\service\ScheduleService$1.class
 com\punchermanager\web\controller\ScheduleController.class
 com\punchermanager\service\CompanySettingsService.class
@@ -27,6 +29,7 @@ com\punchermanager\domain\Punch.class
 com\punchermanager\web\dto\LoginResponse.class
 com\punchermanager\web\dto\CompanySettingsDto.class
 com\punchermanager\web\dto\UserUpsertRequest.class
+com\punchermanager\domain\AttendanceRiskRule.class
 com\punchermanager\web\dto\AttendanceRowDto.class
 com\punchermanager\web\controller\DepartmentController.class
 com\punchermanager\web\dto\ScheduleRespondRequest.class
@@ -38,6 +41,7 @@ com\punchermanager\service\DepartmentService$1.class
 com\punchermanager\repository\DepartmentRepository.class
 com\punchermanager\domain\ScheduleConfirmation.class
 com\punchermanager\web\dto\NotificationDto.class
+com\punchermanager\web\dto\AttendanceRiskEvaluateResponse.class
 com\punchermanager\bootstrap\DataSeeder$1TeamSpec.class
 com\punchermanager\web\dto\DepartmentDurationsRequest.class
 com\punchermanager\web\dto\PunchResponse.class
@@ -48,6 +52,7 @@ com\punchermanager\web\dto\LoginRequest.class
 com\punchermanager\schedule\AbsenceEvaluationScheduler.class
 com\punchermanager\domain\NotificationEntity.class
 com\punchermanager\web\dto\AttendanceLateDayDto.class
+com\punchermanager\service\MailService$1.class
 com\punchermanager\domain\ScheduleConfirmationStatus.class
 com\punchermanager\service\UserAdminService$1.class
 com\punchermanager\service\AttendanceService$LateAgg.class
@@ -71,6 +76,7 @@ com\punchermanager\bootstrap\DataSeeder$1DeptSpec.class
 com\punchermanager\repository\PunchRepository.class
 com\punchermanager\bootstrap\DataSeeder$1StudyTeamSpec.class
 com\punchermanager\service\AttendanceService.class
+com\punchermanager\service\AttendanceRiskService$1.class
 com\punchermanager\web\exception\ApiException.class
 com\punchermanager\web\dto\SendNotificationRequest$TargetType.class
 com\punchermanager\web\controller\CompanySettingsController.class
@@ -83,6 +89,7 @@ com\punchermanager\web\dto\AttendanceAnalyticsResponseDto.class
 com\punchermanager\bootstrap\DataSeeder$1EmployeeSpec.class
 com\punchermanager\domain\Department.class
 com\punchermanager\domain\AttendanceRecord.class
+com\punchermanager\service\AttendanceRiskService.class
 com\punchermanager\web\controller\UserController.class
 com\punchermanager\web\dto\WeeklyScheduleDayDto.class
 com\punchermanager\service\NotificationService.class
@@ -90,6 +97,7 @@ com\punchermanager\repository\AttendanceRecordRepository.class
 com\punchermanager\domain\UserRole.class
 com\punchermanager\web\dto\AttendanceExportRequest.class
 com\punchermanager\service\TeamService.class
+com\punchermanager\repository\AttendanceRiskAlertRepository.class
 com\punchermanager\repository\UserRepository.class
 com\punchermanager\service\AttendanceExportService$Scope.class
 com\punchermanager\repository\TeamRepository.class
@@ -100,6 +108,7 @@ com\punchermanager\service\AttendanceService$ScheduleVsPlanResult.class
 com\punchermanager\service\MailService.class
 com\punchermanager\service\ScheduleService.class
 com\punchermanager\domain\AttendanceStatus.class
+com\punchermanager\domain\AttendanceRiskLevel.class
 com\punchermanager\service\UserContextService.class
 com\punchermanager\repository\NotificationRepository.class
 com\punchermanager\web\dto\AttendanceOverviewGroupDto.class

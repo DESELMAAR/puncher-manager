@@ -4,18 +4,21 @@ C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\d
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\ScheduleConfirmation.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\NotificationService.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\TeamService.java
+C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\AttendanceRiskEvaluateResponse.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\controller\AttendanceController.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\PunchRequest.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\controller\TeamController.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\security\SecurityConfig.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\Department.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\UserRole.java
+C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\repository\AttendanceRiskAlertRepository.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\controller\TeamMembershipController.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\UserUpsertRequest.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\repository\TeamRepository.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\ScheduleService.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\PunchResponse.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\SendNotificationRequest.java
+C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\schedule\AttendanceRiskScheduler.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\repository\DepartmentRepository.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\PlanningService.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\UserResponse.java
@@ -28,6 +31,7 @@ C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\w
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\WeeklyScheduleUpsertRequest.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\LoginResponse.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\bootstrap\DataSeeder.java
+C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\AttendanceRiskRule.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\security\JwtAuthenticationFilter.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\MailService.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\CompanySettingsUpsertRequest.java
@@ -47,7 +51,9 @@ C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\s
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\CompanySettingsDto.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\config\OpenApiConfig.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\NotificationDto.java
+C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\AttendanceRiskService.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\SseNotificationBroadcaster.java
+C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\AttendanceRiskAlert.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\repository\NotificationRepository.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\PuncherManagerApplication.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\repository\UserRepository.java
@@ -59,6 +65,7 @@ C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\w
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\service\TeamMembershipService.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\AttendanceExportRequest.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\Punch.java
+C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\AttendanceRiskLevel.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\domain\User.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\controller\DepartmentController.java
 C:\Users\deselmaar\Desktop\Puncher 01\backend\src\main\java\com\punchermanager\web\dto\AttendanceAbsentEmployeeDto.java

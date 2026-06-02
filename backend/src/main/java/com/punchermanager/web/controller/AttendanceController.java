@@ -1,6 +1,7 @@
 package com.punchermanager.web.controller;
 
 import com.punchermanager.domain.User;
+import com.punchermanager.service.AttendanceRiskService;
 import com.punchermanager.service.AttendanceService;
 import com.punchermanager.service.AttendanceExportService;
 import com.punchermanager.service.AttendanceExportService.Scope;
@@ -12,6 +13,7 @@ import com.punchermanager.web.dto.AttendanceLateDayDto;
 import com.punchermanager.web.dto.AttendanceLateEmployeeDto;
 import com.punchermanager.web.dto.AttendanceOverviewGroupDto;
 import com.punchermanager.web.dto.AttendanceExportRequest;
+import com.punchermanager.web.dto.AttendanceRiskEvaluateResponse;
 import com.punchermanager.web.dto.AttendanceRowDto;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
@@ -40,14 +42,17 @@ public class AttendanceController {
 
   private final AttendanceService attendanceService;
   private final AttendanceExportService attendanceExportService;
+  private final AttendanceRiskService attendanceRiskService;
   private final UserContextService userContextService;
 
   public AttendanceController(
       AttendanceService attendanceService,
       AttendanceExportService attendanceExportService,
+      AttendanceRiskService attendanceRiskService,
       UserContextService userContextService) {
     this.attendanceService = attendanceService;
     this.attendanceExportService = attendanceExportService;
+    this.attendanceRiskService = attendanceRiskService;
     this.userContextService = userContextService;
   }
 
@@ -283,6 +288,17 @@ public class AttendanceController {
             MediaType.parseMediaType(
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
         .body(bytes);
+  }
+
+  /** Manual trigger for attendance risk rules (demo / admin). Defaults to today. */
+  @PostMapping("/risk/evaluate")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+  public AttendanceRiskEvaluateResponse evaluateRisk(
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+          LocalDate asOf) {
+    LocalDate date = asOf != null ? asOf : LocalDate.now(ZoneId.systemDefault());
+    int created = attendanceRiskService.evaluateAll(date);
+    return new AttendanceRiskEvaluateResponse(date, created);
   }
 
   private static String escape(String s) {

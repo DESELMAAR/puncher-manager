@@ -3,6 +3,7 @@ package com.punchermanager.domain;
 public enum NotificationType {
   MESSAGE,
   SCHEDULE_CONFIRM,
-  SCHEDULE_RESPONSE
+  SCHEDULE_RESPONSE,
+  ATTENDANCE_RISK
 }
 

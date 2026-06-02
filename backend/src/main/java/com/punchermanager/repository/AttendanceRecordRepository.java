@@ -24,4 +24,13 @@ public interface AttendanceRecordRepository extends JpaRepository<AttendanceReco
       @Param("userIds") List<UUID> userIds,
       @Param("from") LocalDate from,
       @Param("to") LocalDate to);
+
+  @Query(
+      "select count(a) from AttendanceRecord a where a.user.id = :userId and a.status = :status "
+          + "and a.recordDate >= :from and a.recordDate <= :to")
+  long countByUserIdAndStatusAndDateRange(
+      @Param("userId") UUID userId,
+      @Param("status") com.punchermanager.domain.AttendanceStatus status,
+      @Param("from") LocalDate from,
+      @Param("to") LocalDate to);
 }

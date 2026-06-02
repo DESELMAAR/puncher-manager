@@ -165,6 +165,13 @@ public class NotificationService {
     return createAndPublish(sender, manager, NotificationType.SCHEDULE_RESPONSE, message, payload);
   }
 
+  @Transactional
+  public NotificationEntity sendAttendanceRisk(
+      User systemSender, User receiver, String message, Object payload) {
+    return createAndPublish(
+        systemSender, receiver, NotificationType.ATTENDANCE_RISK, message, payload);
+  }
+
   private NotificationEntity createAndPublish(
       User sender, User receiver, NotificationType type, String message, Object payload) {
     NotificationEntity entity = new NotificationEntity();

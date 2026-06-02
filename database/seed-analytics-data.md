@@ -29,8 +29,9 @@ Properties (also in `application.yml`):
 | `PUNCHER_SEED_ENABLED` | `puncher.seed.enabled` | `false` |
 | `PUNCHER_SEED_GENERATEATTENDANCERECORDS` | `puncher.seed.generateAttendanceRecords` | `true` |
 | `PUNCHER_SEED_ANALYTICS` | `puncher.seed.analytics` | `true` |
+| `PUNCHER_SEED_ANALYTICSABSENTDAYS` | `puncher.seed.analyticsAbsentDays` | `true` (~1/15 weekdays → ABSENT) |
 
-Analytics org is **idempotent**: if `ANALYTICS-DM-HR` already exists, departments/teams are not recreated (punch seeding still runs for missing days).
+Analytics org is **idempotent**: if `ANALYTICS-DM-HR` already exists, departments/teams are not recreated (punch seeding still runs for missing days). Re-run seeding to add/update **ABSENT** rows on selected analytics weekdays.
 
 ---
 

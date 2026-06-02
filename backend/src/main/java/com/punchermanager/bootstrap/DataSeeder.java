@@ -66,6 +66,13 @@ public class DataSeeder implements ApplicationRunner {
   @Value("${puncher.seed.analytics:true}")
   private boolean seedAnalytics;
 
+  /**
+   * For {@code ANALYTICS-*} employees, mark ~1/15 of weekdays as ABSENT (no punches) for Power BI
+   * absenteeism charts.
+   */
+  @Value("${puncher.seed.analyticsAbsentDays:true}")
+  private boolean seedAnalyticsAbsentDays;
+
   @Value("${spring.datasource.url:unknown}")
   private String datasourceUrl;
 
@@ -122,6 +129,9 @@ public class DataSeeder implements ApplicationRunner {
       log.info("DataSeeder: analytics org already present (ANALYTICS-DM-HR exists)");
     }
     transactionTemplate.executeWithoutResult(status -> seedFuturePunchesForKnownEmployees());
+    if (seedAnalytics && seedAnalyticsAbsentDays) {
+      transactionTemplate.executeWithoutResult(status -> seedAbsentDaysForAnalyticsEmployees());
+    }
     log.info("DataSeeder: finished");
   }
 
@@ -694,6 +704,15 @@ public class DataSeeder implements ApplicationRunner {
 
         Instant from = day.atStartOfDay(zone).toInstant();
         Instant to = day.plusDays(1).atStartOfDay(zone).toInstant();
+        int salt = Math.abs((empId + "|" + day).hashCode());
+
+        if (shouldSeedAnalyticsAbsentDay(empId, salt)) {
+          if (markAnalyticsAbsentDay(u, day, zone)) {
+            seeded++;
+          }
+          continue;
+        }
+
         if (punchRepository
             .findFirstByUserIdAndPunchTypeAndPunchedAtBetween(u.getId(), PunchType.WORK_START, from, to)
             .isPresent()) {
@@ -704,7 +723,6 @@ public class DataSeeder implements ApplicationRunner {
         // Deterministic variation per employee/day (no randomness needed).
         int h = 9;
         int baseStartMin = 0;
-        int salt = Math.abs((empId + "|" + day).hashCode());
         int grace = u.getDepartment() != null && u.getDepartment().getLateGraceMinutes() != null
             ? Math.max(0, Math.min(120, u.getDepartment().getLateGraceMinutes()))
             : 10;
@@ -758,5 +776,65 @@ public class DataSeeder implements ApplicationRunner {
     if (seeded > 0) {
       log.info("Seeded {} future punch-days (skipped {} existing)", seeded, skipped);
     }
+  }
+
+  /**
+   * Converts selected weekdays to ABSENT for analytics demo employees. Idempotent: re-run clears
+   * punches on absent days and upserts {@code attendance_records.status = ABSENT}.
+   */
+  private void seedAbsentDaysForAnalyticsEmployees() {
+    ZoneId zone = ZoneId.systemDefault();
+    LocalDate start = LocalDate.now(zone).minusDays(62);
+    LocalDate end = LocalDate.now(zone).plusDays(35);
+
+    List<User> analyticsEmployees =
+        userRepository.findAll().stream()
+            .filter(u -> u.getRole() == UserRole.EMPLOYEE)
+            .filter(u -> u.getEmployeeId() != null && u.getEmployeeId().startsWith("ANALYTICS-"))
+            .toList();
+
+    int marked = 0;
+    for (User employee : analyticsEmployees) {
+      for (LocalDate day = start; !day.isAfter(end); day = day.plusDays(1)) {
+        if (day.getDayOfWeek() == DayOfWeek.SATURDAY || day.getDayOfWeek() == DayOfWeek.SUNDAY) {
+          continue;
+        }
+        int salt = Math.abs((employee.getEmployeeId() + "|" + day).hashCode());
+        if (!shouldSeedAnalyticsAbsentDay(employee.getEmployeeId(), salt)) {
+          continue;
+        }
+        if (markAnalyticsAbsentDay(employee, day, zone)) {
+          marked++;
+        }
+      }
+    }
+    log.info(
+        "Analytics absent days: marked {} employee-days as ABSENT (~1/15 weekdays per ANALYTICS-* employee)",
+        marked);
+  }
+
+  private boolean shouldSeedAnalyticsAbsentDay(String employeeId, int salt) {
+    return employeeId != null
+        && employeeId.startsWith("ANALYTICS-")
+        && seedAnalyticsAbsentDays
+        && salt % 15 == 0;
+  }
+
+  /** Removes punches/attendance for the day, then writes ABSENT if a schedule exists. */
+  private boolean markAnalyticsAbsentDay(User employee, LocalDate day, ZoneId zone) {
+    Instant from = day.atStartOfDay(zone).toInstant();
+    Instant to = day.plusDays(1).atStartOfDay(zone).toInstant();
+    List<Punch> dayPunches = punchRepository.findByUserAndRange(employee.getId(), from, to);
+    if (!dayPunches.isEmpty()) {
+      punchRepository.deleteAll(dayPunches);
+    }
+    attendanceRecordRepository
+        .findByUserIdAndRecordDate(employee.getId(), day)
+        .ifPresent(attendanceRecordRepository::delete);
+    attendanceService.markAbsentIfNeeded(employee, day);
+    return attendanceRecordRepository
+        .findByUserIdAndRecordDate(employee.getId(), day)
+        .map(r -> "ABSENT".equals(r.getStatus().name()))
+        .orElse(false);
   }
 }

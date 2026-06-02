@@ -69,3 +69,7 @@ puncher:
     enabled: false
     generateAttendanceRecords: true
     analytics: true
+    analyticsAbsentDays: true
+  attendance-risk:
+    enabled: true
+    cron: "0 0 8 * * *"

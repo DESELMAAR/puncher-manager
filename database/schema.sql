@@ -99,7 +99,9 @@ CREATE TABLE notifications (
     (receiver_id IS NOT NULL AND team_id IS NULL)
     OR (receiver_id IS NULL AND team_id IS NOT NULL)
   ),
-  CONSTRAINT chk_notification_type CHECK (notification_type IN ('MESSAGE', 'SCHEDULE_CONFIRM', 'SCHEDULE_RESPONSE'))
+  CONSTRAINT chk_notification_type CHECK (notification_type IN (
+    'MESSAGE', 'SCHEDULE_CONFIRM', 'SCHEDULE_RESPONSE', 'ATTENDANCE_RISK'
+  ))
 );
 
 CREATE INDEX idx_notifications_receiver ON notifications (receiver_id, read_flag, created_at DESC);
@@ -163,3 +165,26 @@ CREATE TABLE company_settings (
 );
 
 CREATE INDEX idx_company_settings_updated_at ON company_settings (updated_at DESC);
+
+-- Attendance risk alerts (automated late/absence warnings)
+
+CREATE TABLE attendance_risk_alerts (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  employee_user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  rule_code VARCHAR(32) NOT NULL,
+  risk_level VARCHAR(16) NOT NULL,
+  window_start DATE NOT NULL,
+  window_end DATE NOT NULL,
+  metric_count INT NOT NULL,
+  employee_notified BOOLEAN NOT NULL DEFAULT FALSE,
+  manager_notified BOOLEAN NOT NULL DEFAULT FALSE,
+  email_sent BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  CONSTRAINT chk_risk_level CHECK (risk_level IN ('WARNING', 'MEDIUM', 'HIGH')),
+  CONSTRAINT chk_risk_rule CHECK (rule_code IN (
+    'LATE_3_IN_7', 'LATE_5_IN_30', 'LATE_10_IN_30', 'ABSENT_2_IN_30', 'ABSENT_4_IN_30'
+  ))
+);
+
+CREATE INDEX idx_attendance_risk_alerts_employee ON attendance_risk_alerts (employee_user_id, created_at DESC);
+CREATE INDEX idx_attendance_risk_alerts_rule ON attendance_risk_alerts (rule_code, created_at DESC);

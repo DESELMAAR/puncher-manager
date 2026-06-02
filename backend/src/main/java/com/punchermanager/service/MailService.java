@@ -69,6 +69,147 @@ public class MailService {
     }
   }
 
+  /** Employee attendance risk email; returns true if sent. */
+  public boolean sendAttendanceRiskEmailToEmployee(
+      User employee,
+      com.punchermanager.domain.AttendanceRiskRule rule,
+      long count,
+      java.time.LocalDate from,
+      java.time.LocalDate to) {
+    if (!isMailConfigured() || !StringUtils.hasText(employee.getEmail())) {
+      return false;
+    }
+    String fromAddr = resolveFromAddress();
+    if (!StringUtils.hasText(fromAddr)) {
+      return false;
+    }
+    try {
+      SimpleMailMessage msg = new SimpleMailMessage();
+      msg.setFrom(fromAddr);
+      msg.setTo(employee.getEmail().trim());
+      msg.setSubject(employeeSubject(rule));
+      msg.setText(employeeBody(employee, rule, count, from, to));
+      mailSenderOrNull.send(msg);
+      return true;
+    } catch (Exception e) {
+      log.warn("Failed to send attendance risk email to {}: {}", employee.getEmail(), e.getMessage());
+      return false;
+    }
+  }
+
+  /** Manager attendance risk email; returns true if sent. */
+  public boolean sendAttendanceRiskEmailToManager(
+      User manager,
+      User employee,
+      com.punchermanager.domain.AttendanceRiskRule rule,
+      long count,
+      java.time.LocalDate from,
+      java.time.LocalDate to) {
+    if (!isMailConfigured() || !StringUtils.hasText(manager.getEmail())) {
+      return false;
+    }
+    String fromAddr = resolveFromAddress();
+    if (!StringUtils.hasText(fromAddr)) {
+      return false;
+    }
+    try {
+      SimpleMailMessage msg = new SimpleMailMessage();
+      msg.setFrom(fromAddr);
+      msg.setTo(manager.getEmail().trim());
+      msg.setSubject("Attendance alert: " + employee.getName());
+      msg.setText(managerBody(manager, employee, rule, count, from, to));
+      mailSenderOrNull.send(msg);
+      return true;
+    } catch (Exception e) {
+      log.warn(
+          "Failed to send attendance risk email to manager {}: {}",
+          manager.getEmail(),
+          e.getMessage());
+      return false;
+    }
+  }
+
+  private static String employeeSubject(com.punchermanager.domain.AttendanceRiskRule rule) {
+    return switch (rule.level()) {
+      case WARNING -> "Friendly reminder: attendance notice";
+      case MEDIUM -> "Coaching notice: repeated lateness";
+      case HIGH -> "Important: attendance escalation";
+    };
+  }
+
+  private String employeeBody(
+      User employee,
+      com.punchermanager.domain.AttendanceRiskRule rule,
+      long count,
+      java.time.LocalDate from,
+      java.time.LocalDate to) {
+    String name = StringUtils.hasText(employee.getName()) ? employee.getName() : "there";
+    String status = rule.status().name().toLowerCase();
+    return "Hello "
+        + name
+        + ",\n\n"
+        + rule.label()
+        + ".\n\n"
+        + "Our records show "
+        + count
+        + " "
+        + status
+        + " day(s) between "
+        + from
+        + " and "
+        + to
+        + ".\n\n"
+        + switch (rule.level()) {
+          case WARNING ->
+              "Please review your schedule and aim to arrive on time for upcoming shifts.";
+          case MEDIUM ->
+              "Lateness is becoming a pattern. Please plan ahead so you can start on time.";
+          case HIGH ->
+              "This level of attendance concern has been escalated. Your manager has been notified.";
+        }
+        + "\n\nSign in to review your attendance:\n"
+        + publicUrl
+        + "/team\n\n"
+        + "Thank you,\n"
+        + "Puncher Manager";
+  }
+
+  private static String managerBody(
+      User manager,
+      User employee,
+      com.punchermanager.domain.AttendanceRiskRule rule,
+      long count,
+      java.time.LocalDate from,
+      java.time.LocalDate to) {
+    String mgr = StringUtils.hasText(manager.getName()) ? manager.getName() : "Manager";
+    String emp = StringUtils.hasText(employee.getName()) ? employee.getName() : employee.getEmployeeId();
+    return "Hello "
+        + mgr
+        + ",\n\n"
+        + "Attendance alert ("
+        + rule.level()
+        + ") for "
+        + emp
+        + " ("
+        + employee.getEmployeeId()
+        + ").\n\n"
+        + "Rule: "
+        + rule.label()
+        + "\n"
+        + "Count: "
+        + count
+        + " "
+        + rule.status().name().toLowerCase()
+        + " day(s)\n"
+        + "Period: "
+        + from
+        + " to "
+        + to
+        + "\n\n"
+        + "Please follow up with the employee as needed.\n\n"
+        + "Puncher Manager";
+  }
+
   private boolean isMailConfigured() {
     return mailSenderOrNull != null && StringUtils.hasText(mailHost);
   }

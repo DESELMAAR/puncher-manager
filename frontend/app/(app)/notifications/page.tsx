@@ -11,6 +11,9 @@ import type {
 } from "@/lib/types";
 import { useAuthStore } from "@/store/authStore";
 import { ScheduleConfirmModal } from "@/components/schedule/ScheduleConfirmModal";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 
 type TargetType = "ALL_EMPLOYEES" | "DEPARTMENT" | "TEAM" | "EMPLOYEE";
 
@@ -231,8 +234,8 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Notifications</h1>
+    <div className="space-y-6">
+      <PageHeader title="Notifications" description="In-app messages, schedule requests, and attendance alerts." />
 
       {role === "EMPLOYEE" && unreadScheduleConfirm && (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/40">
@@ -254,14 +257,14 @@ export default function NotificationsPage() {
         role === "ADMIN" ||
         role === "DEPT_MANAGER" ||
         (role === "TEAM_LEADER" && teamId)) && (
-        <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-          <h2 className="font-semibold">Send notification</h2>
+        <Card>
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Send notification</h2>
 
           {(role === "SUPER_ADMIN" || role === "ADMIN") && (
             <label className="mt-2 block text-sm">
               Target
               <select
-                className="mt-1 w-full rounded border border-zinc-300 p-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
+                className="pm-input mt-1"
                 value={targetType}
                 onChange={(e) => {
                   const v = e.target.value as TargetType;
@@ -283,7 +286,7 @@ export default function NotificationsPage() {
             <label className="mt-2 block text-sm">
               Department
               <select
-                className="mt-1 w-full rounded border border-zinc-300 p-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
+                className="pm-input mt-1"
                 value={selectedDeptId}
                 onChange={(e) => setSelectedDeptId(e.target.value)}
               >
@@ -302,7 +305,7 @@ export default function NotificationsPage() {
               <label className="mt-2 block text-sm">
                 Department (optional)
                 <select
-                  className="mt-1 w-full rounded border border-zinc-300 p-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
+                  className="pm-input mt-1"
                   value={selectedDeptId}
                   onChange={(e) => setSelectedDeptId(e.target.value)}
                 >
@@ -317,7 +320,7 @@ export default function NotificationsPage() {
               <label className="mt-2 block text-sm">
                 Team
                 <select
-                  className="mt-1 w-full rounded border border-zinc-300 p-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
+                  className="pm-input mt-1"
                   value={selectedTeamId}
                   onChange={(e) => setSelectedTeamId(e.target.value)}
                 >
@@ -336,7 +339,7 @@ export default function NotificationsPage() {
             <label className="mt-2 block text-sm">
               Employee
               <select
-                className="mt-1 w-full rounded border border-zinc-300 p-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
+                className="pm-input mt-1"
                 value={selectedEmployeeUserId}
                 onChange={(e) => setSelectedEmployeeUserId(e.target.value)}
               >
@@ -357,7 +360,7 @@ export default function NotificationsPage() {
               <label className="mt-2 block text-sm">
                 Team
                 <select
-                  className="mt-1 w-full rounded border border-zinc-300 p-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
+                  className="pm-input mt-1"
                   value={selectedTeamId}
                   onChange={(e) => setSelectedTeamId(e.target.value)}
                 >
@@ -372,30 +375,26 @@ export default function NotificationsPage() {
             )}
 
           <textarea
-            className="mt-2 w-full rounded border border-zinc-300 p-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
+            className="pm-input mt-2"
             rows={3}
             value={sendText}
             onChange={(e) => setSendText(e.target.value)}
             placeholder="Message to all employees on your team…"
           />
-          <button
-            type="button"
-            onClick={() => void sendTeam()}
-            className="mt-2 rounded bg-emerald-600 px-3 py-1 text-sm text-white"
-          >
+          <Button type="button" onClick={() => void sendTeam()} className="mt-3" size="sm">
             Send
-          </button>
-          {sendOk && <p className="mt-2 text-sm text-zinc-600">{sendOk}</p>}
-        </div>
+          </Button>
+          {sendOk && <p className="mt-2 text-sm text-[var(--pm-muted)]">{sendOk}</p>}
+        </Card>
       )}
       {hint && <p className="text-sm text-amber-600">{hint}</p>}
       <ul className="space-y-3">
         {items.map((n) => (
           <li
             key={n.id}
-            className={`rounded-lg border p-4 dark:border-zinc-800 ${
-              n.read ? "opacity-60" : "border-emerald-200 bg-emerald-50/50 dark:border-emerald-900"
-            }`}
+            className={`pm-card p-4 transition ${
+              n.read ? "opacity-65" : "border-emerald-300/80 bg-emerald-50/40 dark:border-emerald-800/60 dark:bg-emerald-950/25"
+            } ${n.type === "ATTENDANCE_RISK" ? "border-amber-300/70 dark:border-amber-800/50" : ""}`}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="text-sm font-medium">{n.senderName}</div>

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -17,6 +16,9 @@ import { ScheduleConfirmModal } from "@/components/schedule/ScheduleConfirmModal
 import { extractApiMessage } from "@/lib/errors";
 import { toast } from "sonner";
 import { localDateISO } from "@/lib/dateUtils";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Card } from "@/components/ui/Card";
+import { ButtonLink } from "@/components/ui/Button";
 
 export default function DashboardPage() {
   const { name, email, role, employeeId, teamId, departmentId } = useAuthStore();
@@ -89,24 +91,31 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
-      <p className="text-zinc-600 dark:text-zinc-400">
-        Welcome, {name}. You are signed in as <strong>{role}</strong>.
-      </p>
+      <PageHeader
+        title="Dashboard"
+        description={
+          name
+            ? `Welcome back, ${name}. You are signed in as ${role?.replace(/_/g, " ") ?? "user"}.`
+            : undefined
+        }
+      />
+
       {role === "DEPT_MANAGER" && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 text-sm text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/25 dark:text-emerald-50">
+        <Card className="border-emerald-200/70 bg-gradient-to-br from-emerald-50/80 to-white dark:from-emerald-950/30 dark:to-slate-900 dark:border-emerald-900/50">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="font-semibold">Department manager</div>
-            <div className="text-xs opacity-80">{deptName ?? "—"}</div>
+            <div className="font-semibold text-emerald-900 dark:text-emerald-100">Department manager</div>
+            <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">{deptName ?? "—"}</span>
           </div>
-          <div className="mt-2 text-xs text-emerald-900/90 dark:text-emerald-100/90">
+          <div className="mt-2 text-sm text-emerald-900/90 dark:text-emerald-100/90">
             <span className="font-medium">{name ?? "—"}</span>
-            {employeeId ? <span className="font-mono"> · {employeeId}</span> : null}
-            {email ? <span className="font-mono"> · {email}</span> : null}
+            {employeeId ? <span className="font-mono text-xs"> · {employeeId}</span> : null}
+            {email ? <span className="block text-xs text-[var(--pm-muted)]">{email}</span> : null}
           </div>
-        </div>
+        </Card>
       )}
+
       {role === "EMPLOYEE" && <ActiveStatusTimer punches={punches} />}
+
       {scheduleModalOpen && scheduleNotification && schedulePayload && (
         <ScheduleConfirmModal
           open={scheduleModalOpen}
@@ -119,51 +128,51 @@ export default function DashboardPage() {
           }}
         />
       )}
+
       <dl className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-          <dt className="text-xs uppercase text-zinc-500">Employee ID</dt>
-          <dd className="font-mono text-lg">{employeeId}</dd>
-        </div>
-        <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-          <dt className="text-xs uppercase text-zinc-500">Department / Team</dt>
-          <dd className="text-sm">
+        <Card>
+          <dt className="text-xs font-medium uppercase tracking-wide text-[var(--pm-muted)]">Employee ID</dt>
+          <dd className="mt-1 font-mono text-lg font-semibold text-slate-900 dark:text-slate-50">{employeeId}</dd>
+        </Card>
+        <Card>
+          <dt className="text-xs font-medium uppercase tracking-wide text-[var(--pm-muted)]">Department / Team</dt>
+          <dd className="mt-1 text-sm font-medium text-slate-800 dark:text-slate-200">
             {deptName ?? "—"}
-            {" · "}
+            <span className="text-[var(--pm-muted)]"> · </span>
             {teamName ?? "—"}
           </dd>
-        </div>
+        </Card>
       </dl>
-      <div className="space-y-4">
-        <div className="flex flex-wrap gap-3">
+
+      <Card>
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Quick actions</h2>
+        <div className="mt-4 flex flex-wrap gap-3">
           {role === "EMPLOYEE" && (
             <>
-              <Link
-                href="/punch"
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700"
-              >
-                Go to Punch
-              </Link>
-              <Link href="/history" className="rounded-lg border border-zinc-300 px-4 py-2 dark:border-zinc-600">
+              <ButtonLink href="/punch">Go to Punch</ButtonLink>
+              <ButtonLink href="/history" variant="secondary">
                 Punch history
-              </Link>
+              </ButtonLink>
             </>
           )}
           {(role === "TEAM_LEADER" || role === "DEPT_MANAGER" || role === "SUPER_ADMIN" || role === "ADMIN") && (
-            <Link href="/team" className="rounded-lg bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700">
-              Team attendance
-            </Link>
+            <ButtonLink href="/team">Team attendance</ButtonLink>
           )}
           {role === "SUPER_ADMIN" && (
-            <Link href="/admin/settings" className="rounded-lg border border-zinc-300 px-4 py-2 dark:border-zinc-600">
+            <ButtonLink href="/admin/settings" variant="secondary">
               Settings
-            </Link>
+            </ButtonLink>
           )}
-          <Link href="/notifications" className="rounded-lg border border-zinc-300 px-4 py-2 dark:border-zinc-600">
+          <ButtonLink href="/notifications" variant="secondary">
             Notifications
-          </Link>
+          </ButtonLink>
         </div>
-        {role === "EMPLOYEE" && <DashboardWeeklySchedule />}
-      </div>
+        {role === "EMPLOYEE" && (
+          <div className="mt-6 border-t border-[var(--pm-border)] pt-6">
+            <DashboardWeeklySchedule />
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

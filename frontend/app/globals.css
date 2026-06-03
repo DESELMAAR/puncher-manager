@@ -3,22 +3,43 @@
 @tailwind utilities;
 
 :root {
-  --background: rgb(211, 218, 217);
-  --foreground: #18181b;
-  --app-background: rgb(211, 218, 217);
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --app-background: #f1f5f9;
+  --pm-surface: #ffffff;
+  --pm-surface-elevated: #ffffff;
+  --pm-border: #e2e8f0;
+  --pm-muted: #64748b;
+  --pm-accent: #059669;
+  --pm-accent-hover: #047857;
+  --pm-accent-muted: #ecfdf5;
+  --pm-sidebar: #ffffff;
+  --pm-shadow: 0 1px 3px 0 rgb(15 23 42 / 0.06), 0 1px 2px -1px rgb(15 23 42 / 0.06);
+  --pm-shadow-lg: 0 10px 15px -3px rgb(15 23 42 / 0.08), 0 4px 6px -4px rgb(15 23 42 / 0.06);
+  --pm-radius: 0.75rem;
 }
 
 .dark {
-  --background: #44444e;
-  --foreground: #fafafa;
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --pm-surface: #1e293b;
+  --pm-surface-elevated: #334155;
+  --pm-border: #334155;
+  --pm-muted: #94a3b8;
+  --pm-accent: #34d399;
+  --pm-accent-hover: #6ee7b7;
+  --pm-accent-muted: rgb(6 78 59 / 0.35);
+  --pm-sidebar: #0f172a;
+  --pm-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.25);
+  --pm-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.35);
 }
 
-/* Bg picker themes (synced via html[data-bg-theme] in Providers) */
+/* Bg picker themes */
 html[data-bg-theme="DEFAULT"] {
-  --app-background: rgb(211, 218, 217);
+  --app-background: #f1f5f9;
 }
 html.dark[data-bg-theme="DEFAULT"] {
-  --app-background: #44444e;
+  --app-background: #0f172a;
 }
 html[data-bg-theme="ROSE"] {
   --app-background: #fff1f2;
@@ -54,10 +75,77 @@ html.dark[data-bg-theme="VIOLET"] {
 body {
   background-color: var(--app-background);
   color: var(--foreground);
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* Employees directory: full name cell — subtle tint + seamless L→R wave while schedule tooltip is open */
+@layer components {
+  .pm-card {
+    @apply rounded-xl border border-[var(--pm-border)] bg-[var(--pm-surface)] shadow-sm;
+    box-shadow: var(--pm-shadow);
+  }
+
+  .pm-page-title {
+    @apply text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50;
+  }
+
+  .pm-page-desc {
+    @apply text-sm text-[var(--pm-muted)];
+  }
+
+  .pm-label {
+    @apply block text-sm font-medium text-slate-700 dark:text-slate-200;
+  }
+
+  .pm-input {
+    @apply w-full rounded-lg border border-[var(--pm-border)] bg-[var(--pm-surface)] px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition
+      placeholder:text-slate-400
+      focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20
+      dark:bg-slate-900/50 dark:text-slate-100 dark:placeholder:text-slate-500;
+  }
+
+  .pm-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg font-medium transition
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2
+      disabled:pointer-events-none disabled:opacity-50
+      dark:focus-visible:ring-offset-slate-900;
+  }
+
+  .pm-btn-primary {
+    @apply bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 active:bg-emerald-800
+      dark:bg-emerald-600 dark:hover:bg-emerald-500;
+  }
+
+  .pm-btn-secondary {
+    @apply border border-[var(--pm-border)] bg-[var(--pm-surface)] text-slate-700 shadow-sm
+      hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/80;
+  }
+
+  .pm-btn-ghost {
+    @apply text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800;
+  }
+
+  .pm-btn-danger {
+    @apply text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40;
+  }
+
+  .pm-sidebar-nav-active {
+    @apply bg-emerald-50 font-medium text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200;
+  }
+
+  .pm-sidebar-nav {
+    @apply rounded-lg px-3 py-2.5 text-sm text-slate-600 transition
+      hover:bg-slate-100 hover:text-slate-900
+      dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-slate-100;
+  }
+
+  .pm-glass-bar {
+    border-bottom: 1px solid var(--pm-border);
+    background-color: color-mix(in srgb, var(--pm-surface) 88%, transparent);
+    backdrop-filter: blur(12px);
+  }
+}
+
+/* Employees directory schedule wave */
 @keyframes schedule-cell-wave-shimmer {
   0% {
     background-position: 100% 0;
@@ -113,7 +201,6 @@ body {
   background-size: 220% 100%;
 }
 
-/* Team attendance: arrow nudge toward Overview checkbox when dept/team filter is blocked */
 @keyframes attendance-overview-arrow-nudge {
   0% {
     transform: translateY(-36px);

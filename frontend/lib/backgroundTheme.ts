@@ -15,7 +15,7 @@ export function backgroundShellClass(theme: BackgroundTheme): string {
       return "bg-violet-50 dark:bg-violet-950";
     case "DEFAULT":
     default:
-      return "bg-[rgb(211,218,217)] dark:bg-[#44444E]";
+      return "bg-slate-100 dark:bg-slate-900";
   }
 }
 

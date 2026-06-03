@@ -9,9 +9,25 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+      },
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        pm: {
+          surface: "var(--pm-surface)",
+          border: "var(--pm-border)",
+          muted: "var(--pm-muted)",
+          accent: "var(--pm-accent)",
+        },
+      },
+      boxShadow: {
+        pm: "var(--pm-shadow)",
+        "pm-lg": "var(--pm-shadow-lg)",
+      },
+      borderRadius: {
+        pm: "var(--pm-radius)",
       },
     },
   },
@@ -27,8 +43,8 @@ const config: Config = {
     "dark:bg-amber-950",
     "bg-violet-50",
     "dark:bg-violet-950",
-    "bg-[rgb(211,218,217)]",
-    "dark:bg-[#44444E]",
+    "bg-slate-100",
+    "dark:bg-slate-900",
   ],
 };
 export default config;

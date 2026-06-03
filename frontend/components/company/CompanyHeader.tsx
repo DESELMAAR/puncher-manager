@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import type { CompanySettingsDto } from "@/lib/types";
+import { Card } from "@/components/ui/Card";
 
 function lineOrNull(...parts: Array<string | null | undefined>) {
   const s = parts.filter((p) => p && p.trim()).join(" · ");
@@ -36,28 +37,29 @@ export function CompanyHeader() {
   const logo = settings?.logoUrl?.trim() || null;
 
   return (
-    <div className="mb-4 rounded-xl border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/70">
-      <div className="flex items-center gap-3">
-        {logo && (
+    <Card padding="sm" className="mb-5 border-emerald-200/60 bg-gradient-to-r from-white to-emerald-50/40 dark:from-slate-900 dark:to-emerald-950/20 dark:border-emerald-900/40">
+      <div className="flex items-center gap-4">
+        {logo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={logo}
             alt="Company logo"
-            className="h-9 w-9 rounded-md border border-zinc-200 bg-white object-contain p-1 dark:border-zinc-800"
+            className="h-11 w-11 rounded-lg border border-[var(--pm-border)] bg-white object-contain p-1 shadow-sm"
           />
+        ) : (
+          <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-100 text-xs font-semibold text-slate-500 dark:bg-slate-800">
+            Co
+          </div>
         )}
         <div>
-          <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{title}</div>
+          <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">{title}</div>
           {meta ? (
-            <div className="mt-0.5 text-xs text-zinc-600 dark:text-zinc-400">{meta}</div>
+            <div className="mt-0.5 text-xs text-[var(--pm-muted)]">{meta}</div>
           ) : (
-            <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-500">
-              Company info not configured yet.
-            </div>
+            <div className="mt-0.5 text-xs text-[var(--pm-muted)]">Company info not configured yet.</div>
           )}
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
-

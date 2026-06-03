@@ -60,11 +60,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <>
       <GlobalApiLoading />
       <Toaster richColors position="top-right" closeButton />
-      <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2">
+      <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-2xl border border-[var(--pm-border)] bg-[var(--pm-surface)]/90 p-1.5 shadow-pm-lg backdrop-blur-md">
         <button
           type="button"
           onClick={() => setDark((d) => !d)}
-          className="rounded-full border border-zinc-300 bg-white px-3 py-2 text-sm shadow dark:border-zinc-600 dark:bg-zinc-800"
+          className="rounded-xl px-3 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
           aria-label="Toggle dark mode"
         >
           {dark ? t(lang, "theme.light") : t(lang, "theme.dark")}
@@ -73,7 +73,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-white px-3 py-2 text-sm shadow dark:border-zinc-600 dark:bg-zinc-800"
+            className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
             aria-label="Background theme"
           >
             {t(lang, "theme.bg")}
@@ -91,7 +91,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             </svg>
           </button>
           {open && (
-            <div className="absolute bottom-full right-0 mb-2 w-44 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+            <div className="absolute bottom-full right-0 mb-2 w-44 overflow-hidden rounded-xl border border-[var(--pm-border)] bg-[var(--pm-surface)] shadow-pm-lg">
               {(
                 [
                   ["DEFAULT", t(lang, "theme.bg.default")],
@@ -127,7 +127,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => setLangOpen((v) => !v)}
-            className="inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-white px-3 py-2 text-sm shadow dark:border-zinc-600 dark:bg-zinc-800"
+            className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
             aria-label="Language"
           >
             {lang.toUpperCase()}
@@ -145,7 +145,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             </svg>
           </button>
           {langOpen && (
-            <div className="absolute bottom-full right-0 mb-2 w-40 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+            <div className="absolute bottom-full right-0 mb-2 w-40 overflow-hidden rounded-xl border border-[var(--pm-border)] bg-[var(--pm-surface)] shadow-pm-lg">
               {(
                 [
                   ["en", t(lang, "lang.english")],

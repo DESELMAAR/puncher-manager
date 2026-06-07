@@ -17,6 +17,49 @@ import { sortAttendanceByDateDesc } from "@/lib/attendanceSort";
 import { useT } from "@/lib/useT";
 import { EmployeeNameEmailTooltip } from "@/components/EmployeeNameEmailTooltip";
 
+type AttendanceStatusFilter = "ALL" | "ON_TIME" | "LATE";
+
+function formatAttendanceStatus(status: AttendanceRow["status"]): string {
+  switch (status) {
+    case "ON_TIME":
+      return "On time";
+    case "LATE":
+      return "Late";
+    case "ABSENT":
+      return "Absent";
+    default:
+      return "—";
+  }
+}
+
+function StatusFilterHeader({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: AttendanceStatusFilter;
+  onChange: (value: AttendanceStatusFilter) => void;
+}) {
+  return (
+    <th className="p-2">
+      <div className="flex flex-col gap-1">
+        <span>{label}</span>
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value as AttendanceStatusFilter)}
+          className="w-full min-w-[6.5rem] rounded border border-zinc-300 bg-white px-1.5 py-0.5 text-xs font-normal text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200"
+          aria-label={`${label} filter`}
+        >
+          <option value="ALL">All</option>
+          <option value="ON_TIME">On time</option>
+          <option value="LATE">Late</option>
+        </select>
+      </div>
+    </th>
+  );
+}
+
 function clientTimeZone(): string | undefined {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -360,6 +403,7 @@ export default function TeamPage() {
   });
   const [to, setTo] = useState(() => localDateISO());
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<AttendanceStatusFilter>("ALL");
   const [rows, setRows] = useState<AttendanceRow[]>([]);
   const [overviewMode, setOverviewMode] = useState(true);
   const [overview, setOverview] = useState<AttendanceOverviewGroupDto[]>([]);
@@ -386,6 +430,7 @@ export default function TeamPage() {
         from: string;
         to: string;
         query: string;
+        statusFilter: AttendanceStatusFilter;
         selectedDeptId: string | null;
         selectedTeam: string | null;
       }>;
@@ -396,6 +441,9 @@ export default function TeamPage() {
       if (typeof v.from === "string" && v.from) setFrom(v.from);
       if (typeof v.to === "string" && v.to) setTo(v.to);
       if (typeof v.query === "string") setQuery(v.query);
+      if (v.statusFilter === "ALL" || v.statusFilter === "ON_TIME" || v.statusFilter === "LATE") {
+        setStatusFilter(v.statusFilter);
+      }
 
       // Only restore dept/team selections for roles that can change them.
       if (role === "SUPER_ADMIN" || role === "ADMIN") {
@@ -429,6 +477,7 @@ export default function TeamPage() {
       from,
       to,
       query,
+      statusFilter,
       selectedDeptId,
       selectedTeam,
     };
@@ -445,6 +494,7 @@ export default function TeamPage() {
     from,
     to,
     query,
+    statusFilter,
     selectedDeptId,
     selectedTeam,
   ]);
@@ -786,13 +836,14 @@ export default function TeamPage() {
   const q = query.trim().toLowerCase();
   const matches = useCallback(
     (r: AttendanceRow) => {
+      if (statusFilter !== "ALL" && r.status !== statusFilter) return false;
       if (!q) return true;
       const name = (r.name ?? "").toLowerCase();
       const empId = (r.employeeId ?? "").toLowerCase();
       const email = (r.email ?? "").toLowerCase();
       return name.includes(q) || empId.includes(q) || email.includes(q);
     },
-    [q],
+    [q, statusFilter],
   );
 
   const filteredRows = useMemo(
@@ -801,16 +852,13 @@ export default function TeamPage() {
   );
 
   const grouped = useMemo(() => {
-    const base = !q
-      ? overview
-      : overview
-          .map((g) => ({ ...g, rows: g.rows.filter(matches) }))
-          .filter((g) => g.rows.length > 0);
-    return base.map((g) => ({
-      ...g,
-      rows: sortAttendanceByDateDesc(g.rows),
-    }));
-  }, [overview, matches, q]);
+    return overview
+      .map((g) => ({
+        ...g,
+        rows: sortAttendanceByDateDesc(g.rows.filter(matches)),
+      }))
+      .filter((g) => g.rows.length > 0);
+  }, [overview, matches]);
 
   const allDepartmentsMode = !overviewMode && selectedDeptId === ALL_DEPARTMENTS;
   const deptAllTeamsMode =
@@ -1201,10 +1249,13 @@ export default function TeamPage() {
             className="ml-1 w-72 max-w-full rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600 dark:bg-zinc-800"
           />
         </label>
-        {query.trim() && (
+        {(query.trim() || statusFilter !== "ALL") && (
           <button
             type="button"
-            onClick={() => setQuery("")}
+            onClick={() => {
+              setQuery("");
+              setStatusFilter("ALL");
+            }}
             className="rounded-lg border border-zinc-300 px-3 py-1 text-sm dark:border-zinc-600"
           >
             {t("action.clear")}
@@ -1241,7 +1292,11 @@ export default function TeamPage() {
                     <span>{t("table.employee")}</span>
                   </div>
                 </th>
-                <th className="p-2">{t("table.status")}</th>
+                <StatusFilterHeader
+                  label={t("table.status")}
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                />
                 {showScheduleVsPlan && (
                   <th className="p-2" title="Compared to weekly schedule (start / end shift)">
                     {t("table.schedule")}
@@ -1328,7 +1383,7 @@ export default function TeamPage() {
                           </div>
                         )}
                       </td>
-                      <td className="p-2">{r.status ?? "—"}</td>
+                      <td className="p-2">{formatAttendanceStatus(r.status)}</td>
                       {showScheduleVsPlan && (
                         <td className="p-2 text-center" title={r.scheduleVsPlanNote ?? undefined}>
                           {r.scheduleVsPlanOk === true && (
@@ -1456,7 +1511,11 @@ export default function TeamPage() {
                         <span>Employee</span>
                       </div>
                     </th>
-                    <th className="p-2">Status</th>
+                    <StatusFilterHeader
+                      label={t("table.status")}
+                      value={statusFilter}
+                      onChange={setStatusFilter}
+                    />
                     {showScheduleVsPlan && <th className="p-2">Schedule</th>}
                     <th className="p-2">{t("table.teamLeader")}</th>
                     <th className="p-2">
@@ -1542,7 +1601,7 @@ export default function TeamPage() {
                           </div>
                         )}
                       </td>
-                      <td className="p-2">{r.status ?? "—"}</td>
+                      <td className="p-2">{formatAttendanceStatus(r.status)}</td>
                       {showScheduleVsPlan && (
                         <td className="p-2 text-center" title={r.scheduleVsPlanNote ?? undefined}>
                           {r.scheduleVsPlanOk === true && (

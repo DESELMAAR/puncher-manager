@@ -30,6 +30,7 @@ export default function TeamsAdminPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<TeamDto | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TeamDto | null>(null);
+  const [membersTeam, setMembersTeam] = useState<TeamDto | null>(null);
   const [form, setForm] = useState({
     name: "",
     departmentId: "",
@@ -110,6 +111,17 @@ export default function TeamsAdminPage() {
     for (const u of users) m.set(u.id, u.name);
     return m;
   }, [users]);
+
+  const membersForTeam = useMemo(() => {
+    if (!membersTeam) return [];
+    return users
+      .filter((u) => u.teamId === membersTeam.id)
+      .sort((a, b) => {
+        if (a.id === membersTeam.teamLeaderId) return -1;
+        if (b.id === membersTeam.teamLeaderId) return 1;
+        return a.name.localeCompare(b.name);
+      });
+  }, [users, membersTeam]);
 
   const {
     page,
@@ -204,7 +216,7 @@ export default function TeamsAdminPage() {
             </code>{" "}
             who is already in that department (create them in Staff & roles or Employees without a
             team first, then pick them here). Department managers create teams in their department;
-            Super Admin and Admin can manage any department.
+            Super Admin and Admin can manage any department. Click a team name to view its members.
           </p>
           {viewerRole === "DEPT_MANAGER" && (
             <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 text-sm text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/25 dark:text-emerald-50">
@@ -281,7 +293,15 @@ export default function TeamsAdminPage() {
                   key={t.id}
                   className="border-b border-zinc-100 shadow-[inset_0_0_0_2px_rgba(0,0,0,0)] transition hover:bg-zinc-50/70 hover:shadow-[inset_0_0_0_2px_rgba(16,185,129,0.35)] dark:border-zinc-800 dark:hover:bg-zinc-900/40 dark:hover:shadow-[inset_0_0_0_2px_rgba(16,185,129,0.25)]"
                 >
-                  <td className="px-4 py-3 font-medium">{t.name}</td>
+                  <td className="px-4 py-3 font-medium">
+                    <button
+                      type="button"
+                      className="text-left text-emerald-700 hover:underline dark:text-emerald-400"
+                      onClick={() => setMembersTeam(t)}
+                    >
+                      {t.name}
+                    </button>
+                  </td>
                   <td className="px-4 py-3 font-mono text-xs text-zinc-500">
                     {t.teamLeaderId ? userNameById.get(t.teamLeaderId) || "—" : "—"}
                   </td>
@@ -399,6 +419,69 @@ export default function TeamsAdminPage() {
                 onClick={() => void save()}
               >
                 Save
+              </button>
+            </div>
+          </div>
+        </ModalScrim>
+      )}
+
+      {membersTeam && (
+        <ModalScrim
+          onDismiss={() => setMembersTeam(null)}
+          className="fixed inset-0 z-[105] flex items-center justify-center bg-zinc-950/60 p-4 backdrop-blur-sm"
+        >
+          <div className="relative z-[106] w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900">
+            <h2 className="text-xl font-semibold">{membersTeam.name}</h2>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Team members ({membersForTeam.length})
+            </p>
+            {membersForTeam.length === 0 ? (
+              <p className="mt-4 text-sm text-zinc-500">No members assigned to this team yet.</p>
+            ) : (
+              <div className="mt-4 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="border-b border-zinc-100 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950/50">
+                    <tr>
+                      <th className="px-4 py-2.5 font-semibold">Name</th>
+                      <th className="px-4 py-2.5 font-semibold">Email</th>
+                      <th className="px-4 py-2.5 font-semibold">Employee ID</th>
+                      <th className="px-4 py-2.5 font-semibold">Role</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {membersForTeam.map((u) => (
+                      <tr
+                        key={u.id}
+                        className="border-b border-zinc-100 last:border-0 dark:border-zinc-800"
+                      >
+                        <td className="px-4 py-2.5 font-medium">
+                          {u.name}
+                          {u.id === membersTeam.teamLeaderId ? (
+                            <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200">
+                              Leader
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="px-4 py-2.5 font-mono text-xs text-zinc-500">{u.email}</td>
+                        <td className="px-4 py-2.5 font-mono text-xs text-zinc-500">
+                          {u.employeeId}
+                        </td>
+                        <td className="px-4 py-2.5 text-xs text-zinc-600 dark:text-zinc-400">
+                          {u.role}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                className="rounded-xl border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-600"
+                onClick={() => setMembersTeam(null)}
+              >
+                Close
               </button>
             </div>
           </div>

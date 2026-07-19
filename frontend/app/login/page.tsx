@@ -95,7 +95,7 @@ export default function LoginPage() {
           <Button type="submit" disabled={loading} className="w-full">
             {loading ? "Signing in…" : "Sign in"}
           </Button>
-          <p className="text-center bg-red-500 text-xs text-[var(--pm-muted)]">
+          <p className="text-center  text-xs text-[var(--pm-muted)]">
             Demo: superadmin@puncher.com / admin123 · employee@puncher.com / demo123
           </p>
         </form>

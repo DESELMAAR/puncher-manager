@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Soutenance PFE — Puncher Manager (5 slides)</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --card: #1a2332;
+      --border: #2a3648;
+      --text: #e8eef7;
+      --muted: #94a3b8;
+      --accent: #10b981;
+      --blue: #38bdf8;
+      --amber: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+    .deck { height: 100%; position: relative; }
+    .slide {
+      display: none;
+      height: 100%;
+      padding: 3.2rem 4.5rem 4.5rem;
+      flex-direction: column;
+      background:
+        radial-gradient(ellipse 80% 50% at 100% 0%, rgba(16,185,129,0.12), transparent 50%),
+        radial-gradient(ellipse 60% 40% at 0% 100%, rgba(56,189,248,0.08), transparent 45%),
+        var(--bg);
+    }
+    .slide.active { display: flex; animation: fadeIn 0.35s ease; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: none; }
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.6rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .topbar .brand { color: var(--accent); font-weight: 600; }
+    h1 {
+      font-size: 2.8rem;
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.75rem;
+    }
+    h2 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 1.2rem;
+    }
+    h2 span { color: var(--accent); }
+    .subtitle {
+      font-size: 1.1rem;
+      color: var(--muted);
+      max-width: 44rem;
+      line-height: 1.5;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.1rem;
+      flex: 1;
+      align-content: start;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      flex: 1;
+      align-content: start;
+    }
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.85rem;
+      flex: 1;
+      align-content: start;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.2rem;
+    }
+    .card h3 {
+      font-size: 0.95rem;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+    .card p, .card li {
+      font-size: 0.92rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .card ul { padding-left: 1.1rem; }
+    .card li { margin-bottom: 0.3rem; }
+    .pill {
+      display: inline-block;
+      padding: 0.25rem 0.7rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: rgba(16,185,129,0.15);
+      color: var(--accent);
+      border: 1px solid rgba(16,185,129,0.35);
+      margin: 0.2rem 0.25rem 0.2rem 0;
+    }
+    .pill.blue { background: rgba(56,189,248,0.12); color: var(--blue); border-color: rgba(56,189,248,0.35); }
+    .pill.amber { background: rgba(245,158,11,0.12); color: var(--amber); border-color: rgba(245,158,11,0.35); }
+    .cover { justify-content: center; text-align: left; }
+    .cover .eyebrow {
+      color: var(--accent);
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+    .cover h1 { font-size: 3rem; max-width: 18ch; }
+    .cover .meta {
+      margin-top: 2rem;
+      display: grid;
+      gap: 0.4rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .cover .meta strong { color: var(--text); }
+    .highlight {
+      border-left: 3px solid var(--accent);
+      padding-left: 1rem;
+      margin: 0 0 1.2rem;
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.5;
+    }
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      flex: 1;
+    }
+    .layer {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.85rem 1.15rem;
+    }
+    .layer .num {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 8px;
+      background: rgba(16,185,129,0.2);
+      color: var(--accent);
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+    .layer strong { display: block; font-size: 0.98rem; margin-bottom: 0.1rem; }
+    .layer span { font-size: 0.84rem; color: var(--muted); }
+    .flow {
+      display: flex;
+      align-items: stretch;
+      gap: 0.55rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .flow .box {
+      flex: 1;
+      min-width: 7.5rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem;
+      text-align: center;
+    }
+    .flow .box strong { display: block; margin-bottom: 0.3rem; font-size: 0.92rem; }
+    .flow .box span { font-size: 0.78rem; color: var(--muted); }
+    .flow .arrow {
+      display: flex;
+      align-items: center;
+      color: var(--accent);
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+    .kpi { text-align: center; padding: 1.1rem 0.8rem; }
+    .kpi .value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1.1;
+      margin-bottom: 0.3rem;
+    }
+    .kpi .label { font-size: 0.82rem; color: var(--muted); }
+    .check-list { list-style: none; padding: 0; }
+    .check-list li {
+      position: relative;
+      padding-left: 1.45rem;
+      margin-bottom: 0.45rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+    .check-list li::before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .thanks {
+      justify-content: center;
+      text-align: center;
+      align-items: center;
+    }
+    .thanks h1 { font-size: 2.8rem; }
+    .thanks .subtitle { margin: 0 auto 1.3rem; }
+    .footer-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.85rem 1.5rem;
+      background: rgba(11,18,32,0.92);
+      border-top: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+      z-index: 20;
+    }
+    .footer-nav button {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.45rem 0.9rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .footer-nav button:hover { border-color: var(--accent); color: var(--accent); }
+    .dots { display: flex; gap: 0.4rem; align-items: center; }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--border);
+      cursor: pointer;
+    }
+    .dot.on { background: var(--accent); }
+    .page-num { font-size: 0.8rem; color: var(--muted); min-width: 3rem; text-align: center; }
+    @media print {
+      @page { size: landscape; margin: 0; }
+      html, body {
+        height: auto !important;
+        overflow: visible !important;
+        background: #0b1220 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .footer-nav { display: none !important; }
+      .deck { height: auto !important; }
+      .slide {
+        display: flex !important;
+        page-break-after: always;
+        break-after: page;
+        height: 100vh;
+        min-height: 100vh;
+        width: 100%;
+        overflow: hidden;
+        animation: none !important;
+        background:
+          radial-gradient(ellipse 80% 50% at 100% 0%, rgba(16,185,129,0.12), transparent 50%),
+          radial-gradient(ellipse 60% 40% at 0% 100%, rgba(56,189,248,0.08), transparent 45%),
+          #0b1220 !important;
+      }
+      .slide:last-child { page-break-after: auto; break-after: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="deck" id="deck">
+
+    <!-- 1. Couverture -->
+    <section class="slide cover active">
+      <div class="topbar">
+        <span class="brand">Puncher Manager</span>
+        <span>Soutenance PFE · Version courte · 2025–2026</span>
+      </div>
+      <p class="eyebrow">Projet de Fin d'Études · Master DASI</p>
+      <h1>Puncher Manager</h1>
+      <p class="subtitle">
+        Plateforme de gestion des présences, déployée sur AWS avec CI/CD et analyse Power BI.
+      </p>
+      <div class="meta">
+        <div><strong>Étudiant :</strong> Abdessamad El Maaroufi</div>
+        <div><strong>Formation :</strong> Master Digitalisation et Architecture des Systèmes d'Information (DASI)</div>
+        <div><strong>Encadrant académique :</strong> M. Youssef El Gahi</div>
+        <div><strong>Encadrant professionnel :</strong> M. Jalil Elgaraa</div>
+      </div>
+      <div style="margin-top:1.6rem">
+        <span class="pill">Spring Boot 3</span>
+        <span class="pill blue">Next.js 14</span>
+        <span class="pill amber">AWS · Power BI</span>
+      </div>
+    </section>
+
+    <!-- 2. Problème & objectifs -->
+    <section class="slide">
+      <div class="topbar">
+        <span class="brand">Puncher Manager</span>
+        <span>01 · Problème & objectifs</span>
+      </div>
+      <h2>Pourquoi ce projet <span>?</span></h2>
+      <p class="highlight">
+        Concevoir une solution de présences <strong style="color:#e8eef7">fiable, sécurisée et analysable</strong>,
+        déployable en production cloud.
+      </p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Problématique</h3>
+          <ul>
+            <li>Suivi des pointages, retards et absences</li>
+            <li>Conformité planning vs réel</li>
+            <li>Excel / SaaS : peu flexibles ou coûteux</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Objectifs atteints</h3>
+          <ul class="check-list">
+            <li>App full-stack multi-rôles</li>
+            <li>Déploiement AWS + CI/CD</li>
+            <li>Power BI + alertes automatiques</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Solution technique -->
+    <section class="slide">
+      <div class="topbar">
+        <span class="brand">Puncher Manager</span>
+        <span>02 · Solution technique</span>
+      </div>
+      <h2>Architecture & stack</h2>
+      <div class="stack" style="margin-bottom:1rem">
+        <div class="layer">
+          <div class="num">1</div>
+          <div><strong>Présentation</strong><span>Next.js 14 · React · JWT côté client</span></div>
+        </div>
+        <div class="layer">
+          <div class="num">2</div>
+          <div><strong>Métier</strong><span>Spring Boot 3 · API REST · JWT · 5 rôles</span></div>
+        </div>
+        <div class="layer">
+          <div class="num">3</div>
+          <div><strong>Données</strong><span>JPA · PostgreSQL · 11 tables</span></div>
+        </div>
+      </div>
+      <div class="grid-3">
+        <div class="card">
+          <h3>Modules clés</h3>
+          <ul>
+            <li>Pointage séquentiel</li>
+            <li>Présences & analytics</li>
+            <li>Planning + notifications</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Sécurité</h3>
+          <ul>
+            <li>JWT stateless + BCrypt</li>
+            <li>SUPER_ADMIN → EMPLOYEE</li>
+            <li>Swagger / OpenAPI</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Cloud</h3>
+          <ul>
+            <li>ALB → ECS Fargate</li>
+            <li>RDS privé</li>
+            <li>GitHub Actions CI/CD</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Résultats -->
+    <section class="slide">
+      <div class="topbar">
+        <span class="brand">Puncher Manager</span>
+        <span>03 · Résultats</span>
+      </div>
+      <h2>Ce qui a été livré</h2>
+      <div class="flow">
+        <div class="box"><strong>Internet</strong><span>Utilisateurs</span></div>
+        <div class="arrow">→</div>
+        <div class="box"><strong>ALB</strong><span>Répartition</span></div>
+        <div class="arrow">→</div>
+        <div class="box"><strong>ECS</strong><span>Front + Back</span></div>
+        <div class="arrow">→</div>
+        <div class="box"><strong>RDS</strong><span>PostgreSQL</span></div>
+      </div>
+      <div class="grid-4" style="margin-bottom:1rem">
+        <div class="card kpi"><div class="value">5</div><div class="label">Rôles</div></div>
+        <div class="card kpi"><div class="value">35+</div><div class="label">Endpoints</div></div>
+        <div class="card kpi"><div class="value">11</div><div class="label">Tables DB</div></div>
+        <div class="card kpi"><div class="value">CI/CD</div><div class="label">Automatisé</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Business Intelligence</h3>
+          <ul>
+            <li>Power BI via bastion SSH + ODBC</li>
+            <li>KPIs retards / absences</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Alertes automatiques</h3>
+          <ul>
+            <li>Règles retards & absences</li>
+            <li>E-mail + notifications in-app</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Conclusion -->
+    <section class="slide thanks">
+      <div class="topbar" style="width:100%;position:absolute;top:3.2rem;left:0;padding:0 4.5rem">
+        <span class="brand">Puncher Manager</span>
+        <span>04 · Conclusion</span>
+      </div>
+      <h1>Merci de votre attention</h1>
+      <p class="subtitle">
+        Puncher Manager : de l’opérationnel au cloud, jusqu’à l’analyse BI et les alertes automatiques.
+      </p>
+      <div style="margin:0.8rem 0 1.2rem">
+        <span class="pill">Perspectives</span>
+        <span class="pill blue">HTTPS · Mobile</span>
+        <span class="pill amber">IA · n8n</span>
+      </div>
+      <p style="color:var(--accent);font-size:1.3rem;font-weight:600">Questions & réponses</p>
+      <p style="color:var(--muted);font-size:0.9rem;margin-top:1rem">
+        Abdessamad El Maaroufi · Master DASI
+      </p>
+    </section>
+  </div>
+
+  <div class="footer-nav">
+    <button type="button" id="prev">← Précédent</button>
+    <div style="display:flex;align-items:center;gap:0.8rem">
+      <div class="dots" id="dots"></div>
+      <span class="page-num" id="pageNum">1 / 5</span>
+    </div>
+    <button type="button" id="next">Suivant →</button>
+  </div>
+
+  <script>
+    const slides = [...document.querySelectorAll(".slide")];
+    const dots = document.getElementById("dots");
+    const pageNum = document.getElementById("pageNum");
+    let i = 0;
+    slides.forEach((_, idx) => {
+      const d = document.createElement("div");
+      d.className = "dot" + (idx === 0 ? " on" : "");
+      d.addEventListener("click", () => go(idx));
+      dots.appendChild(d);
+    });
+    function go(n) {
+      slides[i].classList.remove("active");
+      dots.children[i].classList.remove("on");
+      i = (n + slides.length) % slides.length;
+      slides[i].classList.add("active");
+      dots.children[i].classList.add("on");
+      pageNum.textContent = (i + 1) + " / " + slides.length;
+    }
+    document.getElementById("prev").onclick = () => go(i - 1);
+    document.getElementById("next").onclick = () => go(i + 1);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") { e.preventDefault(); go(i + 1); }
+      if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); go(i - 1); }
+      if (e.key === "f" || e.key === "F11") {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
+      }
+    });
+  </script>
+</body>
+</html>

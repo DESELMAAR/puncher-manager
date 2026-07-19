@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Soutenance PFE — Puncher Manager</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #111827;
+      --card: #1a2332;
+      --border: #2a3648;
+      --text: #e8eef7;
+      --muted: #94a3b8;
+      --accent: #10b981;
+      --accent-dim: #059669;
+      --blue: #38bdf8;
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+    .deck { height: 100%; position: relative; }
+    .slide {
+      display: none;
+      height: 100%;
+      padding: 3.2rem 4.5rem 4.5rem;
+      flex-direction: column;
+      background:
+        radial-gradient(ellipse 80% 50% at 100% 0%, rgba(16,185,129,0.12), transparent 50%),
+        radial-gradient(ellipse 60% 40% at 0% 100%, rgba(56,189,248,0.08), transparent 45%),
+        var(--bg);
+    }
+    .slide.active { display: flex; animation: fadeIn 0.35s ease; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: none; }
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.8rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .topbar .brand { color: var(--accent); font-weight: 600; }
+    h1 {
+      font-size: 2.6rem;
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.75rem;
+    }
+    h2 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 1.4rem;
+    }
+    h2 span { color: var(--accent); }
+    .subtitle {
+      font-size: 1.15rem;
+      color: var(--muted);
+      max-width: 42rem;
+      line-height: 1.5;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      flex: 1;
+      align-content: start;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      flex: 1;
+      align-content: start;
+    }
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.9rem;
+      flex: 1;
+      align-content: start;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.15rem 1.25rem;
+    }
+    .card h3 {
+      font-size: 0.95rem;
+      color: var(--accent);
+      margin-bottom: 0.55rem;
+      font-weight: 600;
+    }
+    .card p, .card li {
+      font-size: 0.92rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .card ul { padding-left: 1.1rem; }
+    .card li { margin-bottom: 0.35rem; }
+    .pill {
+      display: inline-block;
+      padding: 0.25rem 0.7rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: rgba(16,185,129,0.15);
+      color: var(--accent);
+      border: 1px solid rgba(16,185,129,0.35);
+      margin: 0.2rem 0.25rem 0.2rem 0;
+    }
+    .pill.blue { background: rgba(56,189,248,0.12); color: var(--blue); border-color: rgba(56,189,248,0.35); }
+    .pill.amber { background: rgba(245,158,11,0.12); color: var(--amber); border-color: rgba(245,158,11,0.35); }
+    .cover {
+      justify-content: center;
+      text-align: left;
+    }
+    .cover .eyebrow {
+      color: var(--accent);
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+    .cover h1 { font-size: 3.1rem; max-width: 18ch; }
+    .cover .meta {
+      margin-top: 2.2rem;
+      display: grid;
+      gap: 0.45rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .cover .meta strong { color: var(--text); }
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+      flex: 1;
+    }
+    .layer {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem 1.2rem;
+    }
+    .layer .num {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 8px;
+      background: rgba(16,185,129,0.2);
+      color: var(--accent);
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+    .layer strong { display: block; font-size: 1rem; margin-bottom: 0.15rem; }
+    .layer span { font-size: 0.85rem; color: var(--muted); }
+    .flow {
+      display: flex;
+      align-items: stretch;
+      gap: 0.6rem;
+      flex: 1;
+      align-content: center;
+      flex-wrap: wrap;
+    }
+    .flow .box {
+      flex: 1;
+      min-width: 8rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      text-align: center;
+    }
+    .flow .box strong { display: block; margin-bottom: 0.35rem; font-size: 0.95rem; }
+    .flow .box span { font-size: 0.8rem; color: var(--muted); }
+    .flow .arrow {
+      display: flex;
+      align-items: center;
+      color: var(--accent);
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+    .kpi {
+      text-align: center;
+      padding: 1.3rem 1rem;
+    }
+    .kpi .value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1.1;
+      margin-bottom: 0.35rem;
+    }
+    .kpi .label { font-size: 0.85rem; color: var(--muted); }
+    .role-row {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      margin-top: 0.4rem;
+    }
+    .footer-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.85rem 1.5rem;
+      background: rgba(11,18,32,0.92);
+      border-top: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+      z-index: 20;
+    }
+    .footer-nav button {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.45rem 0.9rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .footer-nav button:hover { border-color: var(--accent); color: var(--accent); }
+    .dots { display: flex; gap: 0.4rem; align-items: center; }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--border);
+    }
+    .dot.on { background: var(--accent); }
+    .page-num { font-size: 0.8rem; color: var(--muted); min-width: 3.5rem; text-align: center; }
+    .two-col {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 1.4rem;
+      flex: 1;
+      align-content: start;
+    }
+    .check-list { list-style: none; padding: 0; }
+    .check-list li {
+      position: relative;
+      padding-left: 1.5rem;
+      margin-bottom: 0.55rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+    .check-list li::before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .highlight {
+      border-left: 3px solid var(--accent);
+      padding-left: 1rem;
+      margin: 0.8rem 0 1.2rem;
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.5;
+    }
+    .thanks {
+      justify-content: center;
+      text-align: center;
+      align-items: center;
+    }
+    .thanks h1 { font-size: 3rem; }
+    .thanks .subtitle { margin: 0 auto 1.5rem; }
+    @media print {
+      @page {
+        size: landscape;
+        margin: 0;
+      }
+      html, body {
+        height: auto !important;
+        overflow: visible !important;
+        background: #0b1220 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .footer-nav { display: none !important; }
+      .deck { height: auto !important; }
+      .slide {
+        display: flex !important;
+        page-break-after: always;
+        break-after: page;
+        height: 100vh;
+        min-height: 100vh;
+        width: 100%;
+        overflow: hidden;
+        animation: none !important;
+        background:
+          radial-gradient(ellipse 80% 50% at 100% 0%, rgba(16,185,129,0.12), transparent 50%),
+          radial-gradient(ellipse 60% 40% at 0% 100%, rgba(56,189,248,0.08), transparent 45%),
+          #0b1220 !important;
+      }
+      .slide:last-child { page-break-after: auto; break-after: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="deck" id="deck">
+
+    <!-- 1. Couverture -->
+    <section class="slide cover active" data-title="Couverture">
+      <div class="topbar">
+        <span class="brand">Puncher Manager</span>
+        <span>Soutenance PFE · 2025–2026</span>
+      </div>
+      <p class="eyebrow">Projet de Fin d'Études</p>
+      <h1>Puncher Manager</h1>
+      <p class="subtitle">
+        Plateforme full-stack de gestion des présences, plannings et analytics —
+        déployée sur AWS avec CI/CD et Business Intelligence.
+      </p>
+      <div class="meta">
+        <div><strong>Étudiant :</strong> Abdessamad El Maaroufi</div>
+        <div><strong>Formation :</strong> Master Digitalisation et Architecture des Systèmes d'Information (DASI)</div>
+        <div><strong>Encadrant académique :</strong> M. Youssef El Gahi</div>
+        <div><strong>Encadrant professionnel :</strong> M. Jalil Elgaraa</div>
+      </div>
+      <div style="margin-top:1.8rem">
+        <span class="pill">Spring Boot 3</span>
+        <span class="pill blue">Next.js 14</span>
+        <span class="pill amber">AWS · Power BI</span>
+      </div>
+    </section>
+
+    <!-- 2. Contexte & problématique -->
+    <section class="slide" data-title="Contexte">
+      <div class="topbar">
+        <span class="brand">Puncher Manager</span>
+        <span>01 · Contexte & problématique</span>
+      </div>
+      <h2>Pourquoi ce projet <span>?</span></h2>
+      <p class="highlight">
+        Comment concevoir une solution de présences <strong style="color:#e8eef7">fiable, sécurisée, scalable et analysable</strong>,
+        déployable en production cloud ?
+      </p>
+      <div class="grid-3">
+        <div class="card">
+          <h3>Contexte</h3>
+          <ul>
+            <li>Suivi quotidien des pointages</li>
+            <li>Conformité planning vs réel</li>
+            <li>Retards & absences</li>
+            <li>Communication managers ↔ équipes</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Limites actuelles</h3>
+          <ul>
+            <li>Excel peu scalable</li>
+            <li>SaaS coûteux / peu flexible</li>
+            <li>Peu d'intégration DevOps / BI</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Notre réponse</h3>
+          <ul>
+            <li>Application sur mesure</li>
+            <li>Rôles & périmètres</li>
+            <li>Cloud AWS + CI/CD</li>
+            <li>Power BI + alertes auto</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Objectifs -->
+    <section class="slide" data-title="Objectifs">
+      <div class="topbar">
+        <span class="brand">Puncher Manager</span>
+        <span>02 · Objectifs</span>
+      </div>
+      <h2>Objectifs du projet</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Objectif principal</h3>
+          <p>Développer et mettre en production une plateforme complète de gestion des présences et des plannings.</p>
+        </div>
+        <div class="card">
+          <h3>Indicateurs de réussite</h3>
+          <ul class="check-list">
+            <li>5 rôles avec périmètres d'accès</li>
+            <li>Pointage séquentiel validé</li>
+            <li>Attendance + exports CSV/Excel</li>
+            <li>Déploiement AWS via ALB</li>
+            <li>Pipeline CI/CD GitHub Actions</li>
+            <li>Power BI sur RDS privé + alertes</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Architecture -->
+    <section class="slide" data-title="Architecture">
+      <div class="topbar">
+        <span class="brand">Puncher Manager</span>
+        <span>03 · Architecture</span>
+      </div>
+      <h2>Architecture en couches</h2>
+      <div class="stack">
+        <div class="layer">
+          <div class="num">1</div>
+          <div>
+            <strong>Présentation</strong>
+            <span>Next.js 14 · React · Tailwind · Zustand · Axios · SSE</span>
+          </div>
+        </div>
+        <div class="layer">
+          <div class="num">2</div>
+          <div>
+            <strong>Service & logique métier</strong>
+            <span>Spring Boot 3 · JWT · Controllers · Services · Schedulers</span>
+          </div>
+        </div>
+        <div class="layer">
+          <div class="num">3</div>
+          <div>
+            <strong>Accès aux données</strong>
+            <span>Spring Data JPA · Hibernate · Repositories</span>
+          </div>
+        </div>
+        <div class="layer">
+          <div class="num">4</div>
+          <div>
+            <strong>Persistance</strong>
+            <span>PostgreSQL 16 · 11 tables · contraintes PK/FK/UNIQUE</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Fonctionnalités -->
+    <section class="slide" data-title="Fonctionnalités">
+      <div class="topbar">
+        <span class="brand">Puncher Manager</span>
+        <span>04 · Fonctionnalités</span>
+      </div>
+      <h2>Modules livrés</h2>
+      <div class="grid-3">
+        <div class="card">
+          <h3>Pointage</h3>
+          <ul>
+            <li>Séquence WORK_START → LOGOUT</li>
+            <li>Historique personnel</li>
+            <li>Statut à l'heure / retard</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Présences</h3>
+          <ul>
+            <li>Vue jour / plage (2 mois)</li>
+            <li>Filtres équipe & statut</li>
+            <li>Export CSV / Excel</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Planning</h3>
+          <ul>
+            <li>Planning hebdomadaire</li>
+            <li>Confirmation employé</li>
+            <li>Demandes de correction</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Notifications</h3>
+          <ul>
+            <li>Ciblage équipe / dept</li>
+            <li>Temps réel (SSE)</li>
+            <li>E-mails SMTP</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Analytics</h3>
+          <ul>
+            <li>KPIs retards / absences</li>
+            <li>Graphiques d'évolution</li>
+            <li>Détail employés late</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Administration</h3>
+          <ul>
+            <li>Départements & équipes</li>
+            <li>Employés & rôles</li>
+            <li>Paramètres entreprise</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Rôles & sécurité -->
+    <section class="slide" data-title="Sécurité">
+      <div class="topbar">
+        <span class="brand">Puncher Manager</span>
+        <span>05 · Rôles & sécurité</span>
+      </div>
+      <h2>Sécurité & périmètres</h2>
+      <div class="two-col">
+        <div class="stack">
+          <div class="card">
+            <h3>Authentification JWT</h3>
+            <ul>
+              <li>Login → token HMAC (8h)</li>
+              <li>Session STATELESS</li>
+              <li>Mots de passe BCrypt</li>
+              <li>@PreAuthorize par rôle</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>API REST documentée</h3>
+            <ul>
+              <li>35+ endpoints / 11 modules</li>
+              <li>Swagger UI · OpenAPI</li>
+              <li>Exports & SSE inclus</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card">
+          <h3>5 rôles</h3>
+          <div class="role-row">
+            <span class="pill">SUPER_ADMIN</span>
+            <span class="pill blue">ADMIN</span>
+            <span class="pill amber">DEPT_MANAGER</span>
+            <span class="pill">TEAM_LEADER</span>
+            <span class="pill blue">EMPLOYEE</span>
+          </div>
+          <ul style="margin-top:1rem">
+            <li><strong style="color:#e8eef7">Employé</strong> — pointage & historique</li>
+            <li><strong style="color:#e8eef7">Chef d'équipe</strong> — attendance équipe</li>
+            <li><strong style="color:#e8eef7">Resp. département</strong> — équipes & grace</li>
+            <li><strong style="color:#e8eef7">Admin / Super Admin</strong> — org & config</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. Cloud & DevOps -->
+    <section class="slide" data-title="Cloud">
+      <div class="topbar">
+        <span class="brand">Puncher Manager</span>
+        <span>06 · Cloud & DevOps</span>
+      </div>
+      <h2>Déploiement AWS & CI/CD</h2>
+      <div class="flow" style="margin-bottom:1.2rem">
+        <div class="box"><strong>Internet</strong><span>Utilisateurs</span></div>
+        <div class="arrow">→</div>
+        <div class="box"><strong>ALB</strong><span>/api/* · /*</span></div>
+        <div class="arrow">→</div>
+        <div class="box"><strong>ECS Fargate</strong><span>Frontend + Backend</span></div>
+        <div class="arrow">→</div>
+        <div class="box"><strong>RDS</strong><span>PostgreSQL privé</span></div>
+      </div>
+      <div class="grid-3">
+        <div class="card">
+          <h3>Infrastructure</h3>
+          <ul>
+            <li>Terraform (VPC, SG, IAM)</li>
+            <li>RDS non public</li>
+            <li>Conteneurs Docker</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Pipeline CI/CD</h3>
+          <ul>
+            <li>Push sur main</li>
+            <li>Tests → Build → Push</li>
+            <li>Déploiement ECS auto</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Sécurité cloud</h3>
+          <ul>
+            <li>Security Groups</li>
+            <li>Bastion pour BI</li>
+            <li>Secrets GitHub</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. BI & Alertes -->
+    <section class="slide" data-title="BI">
+      <div class="topbar">
+        <span class="brand">Puncher Manager</span>
+        <span>07 · BI & alertes</span>
+      </div>
+      <h2>Power BI & automatisation</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Business Intelligence</h3>
+          <ul>
+            <li>RDS privé → bastion EC2</li>
+            <li>Tunnel SSH + ODBC</li>
+            <li>KPIs retards / absences</li>
+            <li>Seeder analytics (24 employés)</li>
+          </ul>
+          <p style="margin-top:0.8rem;font-size:0.85rem;color:#94a3b8">
+            Power BI Desktop → localhost:5433 → Bastion → RDS
+          </p>
+        </div>
+        <div class="card">
+          <h3>Alertes de risque</h3>
+          <ul>
+            <li>3 retards / 7 jours</li>
+            <li>5 ou 10+ retards / 30 jours</li>
+            <li>2 ou 4+ absences / 30 jours</li>
+            <li>E-mail + notification in-app</li>
+            <li>Scheduler quotidien 08h00</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. Résultats -->
+    <section class="slide" data-title="Résultats">
+      <div class="topbar">
+        <span class="brand">Puncher Manager</span>
+        <span>08 · Résultats & compétences</span>
+      </div>
+      <h2>Bilan du projet</h2>
+      <div class="grid-4" style="margin-bottom:1.2rem">
+        <div class="card kpi"><div class="value">5</div><div class="label">Rôles métier</div></div>
+        <div class="card kpi"><div class="value">35+</div><div class="label">Endpoints API</div></div>
+        <div class="card kpi"><div class="value">11</div><div class="label">Tables PostgreSQL</div></div>
+        <div class="card kpi"><div class="value">100%</div><div class="label">CI/CD automatisé</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Difficultés résolues</h3>
+          <ul>
+            <li>RDS privé ↔ Power BI (tunnel SSH)</li>
+            <li>Données attendance vs UI</li>
+            <li>Build Docker & variables prod</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Compétences acquises</h3>
+          <ul>
+            <li>Full-stack (Spring + Next.js)</li>
+            <li>DevOps cloud (AWS, Terraform)</li>
+            <li>BI & automatisation RH</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. Conclusion -->
+    <section class="slide thanks" data-title="Conclusion">
+      <div class="topbar" style="width:100%;position:absolute;top:3.2rem;left:0;padding:0 4.5rem">
+        <span class="brand">Puncher Manager</span>
+        <span>09 · Conclusion</span>
+      </div>
+      <h1>Merci de votre attention</h1>
+      <p class="subtitle">
+        Puncher Manager : de la saisie opérationnelle au pilotage managers,
+        jusqu'à l'analyse BI et les alertes automatiques — en production sur AWS.
+      </p>
+      <div style="margin:1rem 0 1.5rem">
+        <span class="pill">Perspectives</span>
+        <span class="pill blue">HTTPS / domaine</span>
+        <span class="pill amber">App mobile</span>
+        <span class="pill">IA · n8n</span>
+      </div>
+      <p style="color:var(--accent);font-size:1.35rem;font-weight:600;margin-top:0.5rem">
+        Questions & réponses
+      </p>
+      <p style="color:var(--muted);font-size:0.9rem;margin-top:1.2rem">
+        Démo · Swagger · Rapport PFE · Code source GitHub
+      </p>
+    </section>
+  </div>
+
+  <div class="footer-nav">
+    <button type="button" id="prev" aria-label="Précédent">← Précédent</button>
+    <div style="display:flex;align-items:center;gap:0.8rem">
+      <div class="dots" id="dots"></div>
+      <span class="page-num" id="pageNum">1 / 10</span>
+    </div>
+    <button type="button" id="next" aria-label="Suivant">Suivant →</button>
+  </div>
+
+  <script>
+    const slides = [...document.querySelectorAll(".slide")];
+    const dots = document.getElementById("dots");
+    const pageNum = document.getElementById("pageNum");
+    let i = 0;
+
+    slides.forEach((_, idx) => {
+      const d = document.createElement("div");
+      d.className = "dot" + (idx === 0 ? " on" : "");
+      d.addEventListener("click", () => go(idx));
+      dots.appendChild(d);
+    });
+
+    function go(n) {
+      slides[i].classList.remove("active");
+      dots.children[i].classList.remove("on");
+      i = (n + slides.length) % slides.length;
+      slides[i].classList.add("active");
+      dots.children[i].classList.add("on");
+      pageNum.textContent = (i + 1) + " / " + slides.length;
+    }
+
+    document.getElementById("prev").onclick = () => go(i - 1);
+    document.getElementById("next").onclick = () => go(i + 1);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") {
+        e.preventDefault();
+        go(i + 1);
+      }
+      if (e.key === "ArrowLeft" || e.key === "PageUp") {
+        e.preventDefault();
+        go(i - 1);
+      }
+      if (e.key === "Home") go(0);
+      if (e.key === "End") go(slides.length - 1);
+      if (e.key === "f" || e.key === "F11") {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
+      }
+    });
+  </script>
+</body>
+</html>

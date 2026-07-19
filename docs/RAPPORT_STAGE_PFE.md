@@ -4,11 +4,11 @@
 
 ---
 
-**Étudiant :** [Prénom NOM]  
-**Formation :** [Licence / Master — spécialité]  
+**Étudiant :** Abdessamad El Maaroufi  
+**Formation :** Master Digitalisation et Architecture des Systèmes d'Information (DASI)  
 **Établissement :** [Nom de l'université ou de l'école]  
-**Encadrant académique :** [Nom]  
-**Encadrant professionnel :** [Nom]  
+**Encadrant académique :** M. Youssef El Gahi  
+**Encadrant professionnel :** M. Jalil Elgaraa  
 **Organisme d'accueil :** [Entreprise ou projet personnel]  
 **Période du stage :** [Date de début] — [Date de fin]  
 **Année universitaire :** 2025–2026
